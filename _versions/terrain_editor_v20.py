@@ -1679,12 +1679,6 @@ def calculate_dem_volume(original_dem, modified_dem, transform, nodata, polygon_
     """
     Calculate excavation volume using DEM differencing within a polygon mask.
     
-    Workflow:
-    1. Clip original DEM and modified DEM to basin polygon
-    2. Compute difference raster: original_dem - modified_dem
-    3. Treat positive differences as excavation depth; ignore zero or negative
-    4. Compute volume = sum(diff * cell_area) in m³
-    
     Args:
         original_dem: Original DEM array
         modified_dem: Modified DEM array after basin design
@@ -1699,9 +1693,9 @@ def calculate_dem_volume(original_dem, modified_dem, transform, nodata, polygon_
     from rasterio.transform import xy
     
     try:
-        # Basic validation
+        # Basic validation & helpful error messages
         if original_dem is None or modified_dem is None:
-            return 0.0
+            raise ValueError("original_dem or modified_dem is None")
 
         # Unpack accidental tuple inputs (in case a caller passed (dem, vol))
         if isinstance(original_dem, (list, tuple)) and len(original_dem) == 2 and hasattr(original_dem[0], "shape"):
@@ -1711,72 +1705,51 @@ def calculate_dem_volume(original_dem, modified_dem, transform, nodata, polygon_
 
         # Ensure arrays have shape attribute
         if not hasattr(original_dem, "shape") or not hasattr(modified_dem, "shape"):
-            return 0.0
-
-        # Ensure arrays have same shape
-        if original_dem.shape != modified_dem.shape:
-            return 0.0
+            raise ValueError("original_dem and modified_dem must be array-like with .shape")
 
         # Create polygon mask
         if polygon_coords_xy is None or not hasattr(polygon_coords_xy, "__iter__"):
-            return 0.0
+            raise ValueError("polygon_coords_xy must be an iterable of polygon coordinates")
         if len(polygon_coords_xy) < 3:
-            return 0.0
-        
+            raise ValueError("polygon_coords_xy must contain at least 3 coordinates")
         poly = Polygon(polygon_coords_xy)
 
-        # Get cell area from transform
-        # cell_area = pixel_size^2 where pixel_size comes from transform
+        # Get cell area from transform (account for possible non-square pixels)
         try:
-            # For Affine transform: a = pixel width, e = -pixel height
-            pixel_width = abs(transform.a)
-            pixel_height = abs(transform.e) if hasattr(transform, 'e') else pixel_width
-            cell_area = pixel_width * pixel_height
+            cell_area = abs(transform.a * transform.e)
         except Exception:
             # Fallback: assume square pixels with transform.a
             cell_size = abs(getattr(transform, "a", 1.0))
             cell_area = cell_size * cell_size
 
-        # Step 2: Compute difference raster: original_dem - modified_dem
-        # Convert to float arrays to handle any type issues
-        orig_array = np.array(original_dem, dtype=np.float64)
-        mod_array = np.array(modified_dem, dtype=np.float64)
-        diff = orig_array - mod_array
+        # Calculate difference: original - modified (positive = excavation)
+        diff = np.array(original_dem, dtype=float) - np.array(modified_dem, dtype=float)
 
-        # Step 3 & 4: Clip to polygon and sum positive differences * cell_area
+        # Clip to polygon and sum positive differences
         volume = 0.0
-        h, w = orig_array.shape
+        h, w = original_dem.shape
 
-        for r in range(h):
-            for c in range(w):
-                # Check if pixel is valid (not nodata and not NaN)
-                orig_val = orig_array[r, c]
-                mod_val = mod_array[r, c]
-                
-                # Skip nodata pixels
-                if nodata is not None:
-                    if orig_val == nodata or mod_val == nodata:
-                        continue
-                
-                # Skip NaN pixels
-                if np.isnan(orig_val) or np.isnan(mod_val):
+        for r in range(int(h)):
+            for c in range(int(w)):
+                # Check if pixel is valid
+                if nodata is not None and (original_dem[r, c] == nodata or modified_dem[r, c] == nodata):
                     continue
-                
+                if np.isnan(original_dem[r, c]) or np.isnan(modified_dem[r, c]):
+                    continue
+
                 # Get pixel center coordinates
                 x, y = xy(transform, r, c)
                 point = Point(x, y)
 
-                # Check if point is inside polygon (clipping to basin polygon)
+                # Check if point is inside polygon
                 if poly.contains(point):
-                    # Step 3: Treat positive differences as excavation; ignore zero or negative
-                    diff_val = diff[r, c]
-                    if diff_val > 0:
-                        # Step 4: Sum positive differences * cell_area
-                        volume += diff_val * cell_area
+                    # Only count positive differences (excavation)
+                    if diff[r, c] > 0:
+                        volume += float(diff[r, c]) * float(cell_area)
 
         return float(volume)
     except Exception as e:
-        # Return 0.0 on error instead of showing error (allows non-Streamlit usage)
+        st.error(f"Error calculating DEM volume: {e}")
         return 0.0
 
 def calculate_dem_volume_uncertainty(original_dem, modified_dem, transform, nodata, polygon_coords_xy, analysis_crs, cell_sizes=[0.5, 1.0, 2.0, 3.0, 4.0, 5.0]):
@@ -1903,7 +1876,7 @@ def calculate_dem_volume_uncertainty(original_dem, modified_dem, transform, noda
                 
                 # Calculate volume at this cell size
                 vol = calculate_dem_volume(orig_resampled, mod_resampled, new_transform, nodata, polygon_coords_xy)
-                if vol is not None:
+                if vol is not None and vol > 0:
                     volumes.append(vol)
             except Exception as e:
                 # Skip this cell size if it fails
@@ -1913,19 +1886,11 @@ def calculate_dem_volume_uncertainty(original_dem, modified_dem, transform, noda
             return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0, "volumes": []}
         
         volumes_array = np.array(volumes)
-        # Calculate statistics
-        # Use population standard deviation (ddof=0) since we're testing all cell sizes of interest
-        # This is appropriate for uncertainty analysis where we have the complete set of tested resolutions
-        mean_vol = float(np.mean(volumes_array))
-        std_vol = float(np.std(volumes_array, ddof=0))  # Population std (mathematically correct for this use case)
-        min_vol = float(np.min(volumes_array))
-        max_vol = float(np.max(volumes_array))
-        
         return {
-            "mean": mean_vol,
-            "std": std_vol,
-            "min": min_vol,
-            "max": max_vol,
+            "mean": float(np.mean(volumes_array)),
+            "std": float(np.std(volumes_array)),
+            "min": float(np.min(volumes_array)),
+            "max": float(np.max(volumes_array)),
             "volumes": volumes
         }
     except Exception as e:
@@ -2370,14 +2335,6 @@ def apply_basin_to_dem(dem_array, transform, nodata, outer_coords_xy, depth, sid
     outer_poly = Polygon(outer_coords_xy)
     
     # Determine flow direction: use channel if provided, otherwise first vertex to min elevation
-    # Safety check: ensure channel_coords_xy is a valid iterable, not a scalar
-    if channel_coords_xy is not None:
-        # Check if it's a valid iterable (list, tuple, array) and not a scalar
-        if not hasattr(channel_coords_xy, "__iter__") or isinstance(channel_coords_xy, (str, bytes)):
-            channel_coords_xy = None  # Invalid type, treat as None
-        elif hasattr(channel_coords_xy, "__len__") and len(channel_coords_xy) < 2:
-            channel_coords_xy = None  # Not enough points, treat as None
-    
     if channel_coords_xy is not None and len(channel_coords_xy) >= 2:
         # Use channel: first point = upstream, last point = downstream
         upstream_x, upstream_y = channel_coords_xy[0]
@@ -2462,8 +2419,7 @@ def apply_basin_to_dem(dem_array, transform, nodata, outer_coords_xy, depth, sid
     # Calculate inner polygon (using maximum depth for offset calculation)
     # For longitudinal slope, use the maximum depth (downstream end if positive slope)
     max_depth = depth + (longitudinal_slope / 100.0) * flow_length if longitudinal_slope > 0 else depth
-    # Offset = depth * side_slope (H:1V means horizontal distance = depth * ratio)
-    offset_distance = max_depth * side_slope
+    offset_distance = max_depth / side_slope if side_slope > 0 else max_depth
     inner_poly = outer_poly.buffer(-offset_distance, join_style=2)
     
     if inner_poly.is_empty:
@@ -2557,8 +2513,7 @@ def apply_basin_to_dem(dem_array, transform, nodata, outer_coords_xy, depth, sid
                 dist_to_outer = outer_poly.exterior.distance(point)
                 
                 # Calculate offset distance for this point's depth
-                # Offset = depth * side_slope (H:1V means horizontal distance = depth * ratio)
-                offset_at_point = depth_at_point * side_slope
+                offset_at_point = depth_at_point / side_slope if side_slope > 0 else depth_at_point
                 
                 if dist_to_outer >= offset_at_point:
                     # This shouldn't happen, but handle edge cases
@@ -6016,7 +5971,6 @@ if st.session_state.design_mode == "basin":
             
             channel_coords = st.session_state.get("basin_channel_coords")
             flow_length = 0.0
-            channel_coords_xy = None  # Initialize to None
             
             if channel_coords is not None and len(channel_coords) >= 2:
                 # Use channel line: calculate total length
@@ -6030,18 +5984,12 @@ if st.session_state.design_mode == "basin":
                     x, y = transformer_to_analysis.transform(lon, lat)
                     channel_coords_xy.append((x, y))
                 
-                # Only use channel_coords_xy if we have at least 2 valid points
-                if len(channel_coords_xy) < 2:
-                    channel_coords_xy = None
-                else:
-                    # Calculate total channel length
-                    for i in range(len(channel_coords_xy) - 1):
-                        x1, y1 = channel_coords_xy[i]
-                        x2, y2 = channel_coords_xy[i + 1]
-                        flow_length += np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-            
-            # If no channel coords, calculate flow length from polygon
-            if channel_coords_xy is None:
+                # Calculate total channel length
+                for i in range(len(channel_coords_xy) - 1):
+                    x1, y1 = channel_coords_xy[i]
+                    x2, y2 = channel_coords_xy[i + 1]
+                    flow_length += np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+            else:
                 # Fallback: use first vertex to minimum elevation
                 upstream_x, upstream_y = basin_coords_xy[0]
                 outer_poly = Polygon(basin_coords_xy)
@@ -6138,30 +6086,12 @@ if st.session_state.design_mode == "basin":
                 estimated_volume = outer_area * basin_depth * 0.5
                 volume = max(0, estimated_volume)
             
-            # Store in session state (preserve existing dem_volume, dem_uncertainty, and success message if they exist)
-            existing_dem_volume = st.session_state.basin_volumes.get("dem_volume", None)
-            existing_dem_uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
-            existing_dem_volume_native = st.session_state.basin_volumes.get("dem_volume_native", None)
-            existing_dem_results_text = st.session_state.basin_volumes.get("dem_results_text", None)
-            existing_dem_success_message = st.session_state.basin_volumes.get("dem_success_message", None)
-            
+            # Store in session state
             st.session_state.basin_volumes = {
                 "volume": volume,
                 "outer_area": outer_area,
                 "inner_area": inner_area
             }
-            
-            # Preserve DEM volume, uncertainty, and success message values if they exist
-            if existing_dem_volume is not None:
-                st.session_state.basin_volumes["dem_volume"] = existing_dem_volume
-            if existing_dem_uncertainty is not None:
-                st.session_state.basin_volumes["dem_uncertainty"] = existing_dem_uncertainty
-            if existing_dem_volume_native is not None:
-                st.session_state.basin_volumes["dem_volume_native"] = existing_dem_volume_native
-            if existing_dem_results_text is not None:
-                st.session_state.basin_volumes["dem_results_text"] = existing_dem_results_text
-            if existing_dem_success_message is not None:
-                st.session_state.basin_volumes["dem_success_message"] = existing_dem_success_message
 
             # Convert inner polygon (analysis CRS XY) back to lat/lon for map display with status
             inner_polygon_status = "✅ OK"
@@ -6336,43 +6266,19 @@ if st.session_state.design_mode == "basin":
                 with st.container(border=True):
                     st.markdown("**③ DEM Difference Volume**")
                     
-                    # Display persistent success message if it exists (remains visible after refresh)
-                    if st.session_state.basin_volumes.get("dem_success_message", None) is not None:
-                        st.success(st.session_state.basin_volumes["dem_success_message"])
-                    
                     # Display value or placeholder
-                    # Check if we have computed values stored in session state (persistent across refreshes)
-                    dem_vol = st.session_state.basin_volumes.get("dem_volume", None)
-                    dem_vol_native = st.session_state.basin_volumes.get("dem_volume_native", dem_vol)
-                    uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
-                    
-                    # Always show native resolution volume as primary value (not mean from uncertainty)
-                    if dem_vol is not None or dem_vol_native is not None:
-                        # Use native resolution volume (primary result) - this is the actual computed volume
-                        display_vol = dem_vol_native if dem_vol_native is not None else dem_vol
+                    if st.session_state.basin_modified_dem is not None:
+                        dem_vol = st.session_state.basin_volumes.get("dem_volume", 0.0)
+                        uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
                         
-                        # Get native cell size for display
-                        native_cell_size = abs(analysis_transform.a) if analysis_transform is not None else 0.0
-                        
-                        # Show native resolution volume with uncertainty info if available
-                        if uncertainty and uncertainty.get("mean") is not None and len(uncertainty.get("volumes", [])) > 0:
-                            std_vol = uncertainty.get("std", 0.0)
-                            # Display: Native volume ± uncertainty std dev
-                            st.metric("", f"{display_vol:,.0f} ± {std_vol:,.0f} m³", label_visibility="collapsed")
-                            st.caption(f"Native resolution: {native_cell_size:.2f} m | Uncertainty: ±{std_vol:,.0f} m³")
+                        if uncertainty and uncertainty.get("mean", 0) > 0:
+                            mean_vol = uncertainty["mean"]
+                            std_vol = uncertainty["std"]
+                            st.metric("", f"{mean_vol:,.0f} +/- {std_vol:,.0f} m³", label_visibility="collapsed")
                         else:
-                            st.metric("", f"{display_vol:,.0f} m³", label_visibility="collapsed")
-                            if native_cell_size > 0:
-                                st.caption(f"Native resolution: {native_cell_size:.2f} m")
+                            st.metric("", f"{dem_vol:,.0f} m³", label_visibility="collapsed")
                     else:
                         st.caption("Click button to compute")
-                    
-                    # Add button to view detailed results in popup (always available if results exist)
-                    if st.session_state.basin_volumes.get("dem_results_text", None) is not None:
-                        if st.button("📋 View Detailed Results", key="btn_view_dem_results", help="View complete calculation results including all statistics and uncertainty analysis"):
-                            st.text_area("DEM Difference Volume - Complete Results", 
-                                        st.session_state.basin_volumes.get("dem_results_text", ""), 
-                                        height=400, key="dem_results_display", label_visibility="visible")
                     
                     # Compute button
                     if st.button("🖥️ Compute", key="btn_dem_volume",
@@ -6382,129 +6288,45 @@ if st.session_state.design_mode == "basin":
                                 # Check if DEM is loaded
                                 if analysis_dem is None:
                                     st.error("❌ DEM not loaded. Please load DEM first in Input Data tab.")
-                                elif basin_coords_xy is None or len(basin_coords_xy) < 3:
-                                    st.error("❌ Basin polygon not defined. Please draw a polygon on the Input Data map.")
                                 else:
-                                    # Step 1: Apply basin to DEM to create modified DEM
+                                    # Apply basin to DEM (basin_coords_xy is already in analysis CRS)
                                     # apply_basin_to_dem returns (modified_dem, cut_volume) tuple
-                                    # Get channel_coords_xy from session state or calculate it
-                                    channel_coords_for_dem = st.session_state.get("basin_channel_coords")
-                                    channel_coords_xy_for_dem = None
-                                    
-                                    if channel_coords_for_dem is not None and len(channel_coords_for_dem) >= 2:
-                                        # Transform channel coordinates to analysis CRS
-                                        channel_coords_xy_for_dem = []
-                                        for coord in channel_coords_for_dem:
-                                            if isinstance(coord, (list, tuple)) and len(coord) >= 2:
-                                                lon, lat = coord[0], coord[1]
-                                                x, y = transformer_to_analysis.transform(lon, lat)
-                                                channel_coords_xy_for_dem.append((x, y))
-                                        # Only use if we have at least 2 valid points
-                                        if len(channel_coords_xy_for_dem) < 2:
-                                            channel_coords_xy_for_dem = None
-                                    
-                                    # Create modified DEM by applying basin cut
                                     dem_result = apply_basin_to_dem(
                                         analysis_dem, analysis_transform, analysis_nodata,
                                         basin_coords_xy, basin_depth, basin_side_slope, 
-                                        basin_longitudinal_slope, channel_coords_xy_for_dem
+                                        basin_longitudinal_slope, flow_length
                                     )
                                     
                                     if dem_result is not None:
                                         modified_dem, cut_volume = dem_result
                                         st.session_state.basin_modified_dem = modified_dem
                                         
-                                        # Step 2-4: Calculate DEM difference volume at NATIVE DEM resolution
-                                        # This uses the workflow: clip to polygon, compute difference, sum positive * cell_area
-                                        # This is the PRIMARY volume value (uses native DEM resolution, not resampled)
-                                        dem_vol_native = calculate_dem_volume(
+                                        # Calculate DEM difference volume at original resolution
+                                        dem_vol = calculate_dem_volume(
                                             analysis_dem, modified_dem, analysis_transform, 
                                             analysis_nodata, basin_coords_xy
                                         )
                                         
-                                        # Step 5: Cell-size uncertainty analysis across multiple cell sizes
-                                        # This resamples to different cell sizes to assess resolution sensitivity
-                                        # Note: This is for uncertainty assessment only; the primary volume uses native resolution
+                                        # Calculate uncertainty across multiple cell sizes
                                         uncertainty = calculate_dem_volume_uncertainty(
                                             analysis_dem, modified_dem, analysis_transform, 
                                             analysis_nodata, basin_coords_xy, analysis_crs
                                         )
                                         
-                                        # Store ALL results persistently (these will persist across page refreshes)
-                                        st.session_state.basin_volumes["dem_volume"] = dem_vol_native  # Native resolution volume (PRIMARY)
-                                        st.session_state.basin_volumes["dem_uncertainty"] = uncertainty  # Uncertainty analysis
-                                        st.session_state.basin_volumes["dem_volume_native"] = dem_vol_native  # Explicit native resolution
+                                        st.session_state.basin_volumes["dem_volume"] = dem_vol
+                                        st.session_state.basin_volumes["dem_uncertainty"] = uncertainty
                                         
-                                        # Get native DEM cell size for display
-                                        native_cell_size = abs(analysis_transform.a) if analysis_transform is not None else 0.0
-                                        
-                                        # Create detailed results text for popup (includes all statistics)
                                         cut_vol = st.session_state.basin_volumes.get("volume", 0.0)
-                                        results_text = f"""DEM DIFFERENCE VOLUME CALCULATION RESULTS
-{'='*60}
-
-PRIMARY RESULT (Native DEM Resolution):
-  Volume: {dem_vol_native:,.2f} m³
-  Resolution: {native_cell_size:.2f} m (native DEM cell size)
-  Method: Pixel-by-pixel differencing within basin polygon
-
-GEOMETRIC VOLUME (Reference):
-  Volume: {cut_vol:,.2f} m³
-
-UNCERTAINTY ANALYSIS (Resolution Sensitivity):
-"""
-                                        
-                                        if uncertainty and uncertainty.get("mean") is not None and len(uncertainty.get("volumes", [])) > 0:
-                                            mean_vol = uncertainty.get("mean", 0.0)
-                                            std_vol = uncertainty.get("std", 0.0)
-                                            min_vol = uncertainty.get("min", 0.0)
-                                            max_vol = uncertainty.get("max", 0.0)
-                                            volumes_list = uncertainty.get("volumes", [])
-                                            
-                                            results_text += f"""  Statistics across tested cell sizes:
-    Mean: {mean_vol:,.2f} m³
-    Standard Deviation: {std_vol:,.2f} m³
-    Minimum: {min_vol:,.2f} m³
-    Maximum: {max_vol:,.2f} m³
-    Number of cell sizes tested: {len(volumes_list)}
-  
-  Individual volumes by cell size:
-"""
-                                            cell_sizes = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
-                                            for i, vol in enumerate(volumes_list):
-                                                if i < len(cell_sizes):
-                                                    results_text += f"    {cell_sizes[i]:.1f} m resolution: {vol:,.2f} m³\n"
-                                            
-                                            results_text += f"""
-  Interpretation:
-  - The standard deviation ({std_vol:,.2f} m³) indicates how sensitive the volume is to DEM resolution
-  - Lower standard deviation = more stable across resolutions
-  - Higher standard deviation = volume estimate depends more on DEM resolution
-  - The primary result ({dem_vol_native:,.2f} m³) uses your DEM's native resolution ({native_cell_size:.2f} m)
-"""
-                                            
-                                            # Store detailed results persistently
-                                            st.session_state.basin_volumes["dem_results_text"] = results_text
-                                            
-                                            # Store success message persistently so it remains visible after refresh
-                                            success_msg = f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume (Native {native_cell_size:.2f} m):** {dem_vol_native:,.0f} m³\n\n**Uncertainty Analysis:**\n- Mean: {mean_vol:,.0f} m³\n- Std Dev: {std_vol:,.0f} m³\n- Range: [{min_vol:,.0f}, {max_vol:,.0f}] m³"
-                                            st.session_state.basin_volumes["dem_success_message"] = success_msg
-                                            
-                                            st.success(success_msg)
+                                        if uncertainty and uncertainty.get("mean", 0) > 0:
+                                            mean_vol = uncertainty["mean"]
+                                            std_vol = uncertainty["std"]
+                                            min_vol = uncertainty["min"]
+                                            max_vol = uncertainty["max"]
+                                            st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {mean_vol:,.0f} +/- {std_vol:,.0f} m³\n\n**Range:** [{min_vol:,.0f}, {max_vol:,.0f}] m³")
                                         else:
-                                            results_text += "  Uncertainty analysis not available or incomplete."
-                                            st.session_state.basin_volumes["dem_results_text"] = results_text
-                                            
-                                            # Store success message persistently
-                                            success_msg = f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume (Native {native_cell_size:.2f} m):** {dem_vol_native:,.0f} m³"
-                                            st.session_state.basin_volumes["dem_success_message"] = success_msg
-                                            
-                                            st.success(success_msg)
+                                            st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {dem_vol:,.0f} m³")
                                         
-                                        # Rerun to update the display with the new values
                                         st.rerun()
-                                    else:
-                                        st.error("❌ Failed to create modified DEM. Please check basin parameters.")
                             except Exception as e:
                                 st.error(f"❌ Error computing basin cut: {str(e)}")
                     
@@ -6512,37 +6334,29 @@ UNCERTAINTY ANALYSIS (Resolution Sensitivity):
                     with st.expander("ℹ️ How it works", expanded=False):
                         st.markdown(
                             "**Method:** Raster-Based DEM Difference\n\n"
-                            "**Calculation Steps:**\n"
                             "1. Applies basin geometry to DEM (pixel-by-pixel excavation)\n"
-                            "2. Clips both original and modified DEMs to the basin polygon\n"
-                            "3. Calculates elevation difference: diff = Z_original - Z_modified\n"
-                            "4. Sums positive differences (excavation only): Volume = Σ(max(diff, 0) × Cell_Area)\n"
-                            "5. Uses native DEM resolution for primary volume calculation\n\n"
-                            "**Uncertainty Analysis:**\n"
-                            "The uncertainty analysis assesses how sensitive the volume calculation is to DEM resolution:\n"
-                            "- Resamples both DEMs to multiple cell sizes: 0.5, 1.0, 2.0, 3.0, 4.0, and 5.0 meters\n"
-                            "- Computes volume at each cell size using the same method\n"
-                            "- Calculates statistics from the resulting volumes:\n"
-                            "  • Mean: Average volume across all tested cell sizes\n"
-                            "  • Standard Deviation: Measure of variability (higher = more sensitive to resolution)\n"
-                            "  • Min/Max: Range of volumes across different resolutions\n"
-                            "- The reported uncertainty (standard deviation) indicates how much the volume might change if the DEM had a different resolution\n"
-                            "- **Note:** The primary volume result uses your DEM's native resolution, not the resampled values\n\n"
+                            "2. Calculates elevation difference: Volume = Σ(Z_original - Z_modified) × Cell_Area\n"
+                            "3. Includes uncertainty analysis across multiple cell sizes\n\n"
                             "**Assumptions:**\n"
                             "- DEM resolution determines discretization accuracy\n"
-                            "- Each pixel treated independently (no smoothing between pixels)\n"
-                            "- Positive differences represent excavation (cut), negative/zero are ignored\n"
-                            "- Bilinear interpolation used for resampling in uncertainty analysis\n\n"
+                            "- Each pixel treated independently (no smoothing)\n"
+                            "- Includes resampling uncertainty analysis\n\n"
                             "**Best for:**\n"
                             "- Validating excavation against DEM-derived surface\n"
                             "- Analyzing resolution sensitivity\n"
-                            "- Field verification of basin cuts\n"
-                            "- Understanding how DEM resolution affects volume estimates\n\n"
+                            "- Field verification of basin cuts\n\n"
                             "**Note:** May differ significantly from geometric and TIN volumes due to:\n"
                             "- DEM noise and interpolation artifacts\n"
                             "- Pixel discretization effects\n"
-                            "- Edge alignment with DEM grid\n"
-                            "- Resolution-dependent sampling effects"
+                            "- Edge alignment with DEM grid"
+                            "2. Calculates elevation difference (original - modified)\n"
+                            "3. Sums positive differences * cell area\n"
+                            "4. Includes uncertainty from cell size variation\n\n"
+                            "**Uses:**\n"
+                            "- Original DEM\n"
+                            "- Modified DEM (basin cut)\n"
+                            "- Raster cell area\n\n"
+                            "**Best for:** Comparing design volume with actual terrain impact."
                         )
             
             # Display inner polygon transform status
