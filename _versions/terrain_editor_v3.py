@@ -122,147 +122,57 @@ st.markdown("# ⛰️Kaushal’s Terrain Editor.")
 
 st.markdown("""
 <style>
-    /* Responsive layout with consistent spacing */
-    .main > div {padding-top: 0.5rem;}
-    .block-container {
-        padding-top: 0.5rem; 
-        padding-bottom: 0.5rem; 
-        padding-left: 1rem; 
-        padding-right: 1rem;
-        max-width: 100%;
-    }
+    /* Compact layout - minimize whitespace */
+    .main > div {padding-top: 0.15rem;}
+    .block-container {padding-top: 0.15rem; padding-bottom: 0rem; padding-left: 0.8rem; padding-right: 0.8rem;}
     
-    /* Typography - slightly larger, clearer fonts */
-    h1 {
-        font-size: 1.85rem !important; 
-        font-weight: 600 !important;
-        margin-bottom: 0.3rem !important; 
-        margin-top: 0.3rem !important;
-    }
-    h2 {
-        font-size: 1.5rem !important; 
-        font-weight: 600 !important;
-        margin: 0.4rem 0 0.3rem 0 !important;
-    }
-    h3 {
-        font-size: 1.2rem !important; 
-        font-weight: 600 !important;
-        margin: 0.5rem 0 0.4rem 0 !important;
-    }
-    h4 {
-        font-size: 1.1rem !important; 
-        font-weight: 600 !important;
-        margin: 0.4rem 0 0.3rem 0 !important;
-    }
+    /* Typography - clean and modern */
+    h1 {font-size: 1.6rem !important; margin-bottom: 0.05rem !important; margin-top: 0.05rem !important;}
+    h2 {font-size: 1.3rem !important; margin: 0.05rem 0 !important;}
+    h3 {font-size: 1.0rem !important; margin: 0.05rem 0 !important;}
+    h4 {font-size: 0.95rem !important; margin: 0.02rem 0 !important;}
     
-    /* Consistent spacing in forms */
-    .stForm {margin-bottom: 0.5rem !important;}
+    /* Reduce spacing in forms */
+    .stForm {margin-bottom: 0.1rem !important;}
     .stFormSubmitButton > button {width: 100%;}
     
-    /* Divider - consistent spacing */
-    hr {
-        margin: 0.75rem 0 !important; 
-        height: 1px !important;
-        border: none;
-        background-color: #e0e0e0;
-    }
+    /* Divider - use thin line */
+    hr {margin: 0.15rem 0 !important; height: 1px !important;}
     
-    /* Button styling - slightly larger */
+    /* Button styling */
     .stButton > button {
         width: 100%;
-        padding: 0.5rem 1rem !important;
-        font-size: 0.95rem !important;
-        border-radius: 0.4rem !important;
-        font-weight: 500 !important;
-    }
-    
-    /* Input fields - improved readability */
-    .stNumberInput input, 
-    .stTextInput input,
-    .stSelectbox select {
-        padding: 0.5rem 0.7rem !important;
-        font-size: 0.95rem !important;
-    }
-    
-    /* Slider styling - consistent spacing */
-    .stSlider {
-        margin-bottom: 0.5rem !important;
-    }
-    .stSlider > div > div > div > div {
+        padding: 0.4rem 0.8rem !important;
         font-size: 0.9rem !important;
-        font-weight: 500 !important;
+        border-radius: 0.3rem !important;
     }
     
-    /* Info and warning boxes - consistent padding */
-    .stInfo, 
-    .stWarning, 
-    .stError, 
-    .stSuccess {
-        padding: 0.75rem 1rem !important; 
-        margin: 0.5rem 0 !important;
-        border-radius: 0.4rem !important;
+    /* Input fields */
+    .stNumberInput input, .stTextInput input {
+        padding: 0.4rem !important;
+        font-size: 0.9rem !important;
     }
     
-    /* Card/expander styling - improved readability */
-    .streamlit-expanderHeader {
-        padding: 0.6rem 0.8rem !important; 
-        font-size: 1rem !important;
-        font-weight: 500 !important;
-    }
-    .streamlit-expanderContent {
-        padding: 0.6rem 0.8rem !important;
-    }
+    /* Slider styling */
+    .stSlider {margin-bottom: 0.15rem !important;}
+    .stSlider > div > div > div > div {font-size: 0.8rem !important;}
     
-    /* Table styling - slightly larger */
-    .stDataFrame {
-        font-size: 0.95rem !important;
-    }
+    /* Info and warning boxes */
+    .stInfo, .stWarning {padding: 0.5rem !important; margin: 0.15rem 0 !important;}
+    
+    /* Card/expander styling */
+    .streamlit-expanderHeader {padding: 0.5rem !important; font-size: 0.95rem !important;}
+    .streamlit-expanderContent {padding: 0.4rem !important;}
+    
+    /* Table styling */
+    .stDataFrame {font-size: 0.9rem !important;}
     
     /* Captions and small text */
-    .stCaption {
-        font-size: 0.9rem !important; 
-        margin: 0.3rem 0 !important;
-    }
+    .stCaption {font-size: 0.85rem !important; margin: 0.02rem 0 !important;}
     
-    /* Markdown text and labels - improved readability */
-    p {
-        margin: 0.4rem 0 !important; 
-        line-height: 1.5 !important;
-        font-size: 0.95rem !important;
-    }
-    label {
-        margin-bottom: 0.3rem !important;
-        font-weight: 500 !important;
-        font-size: 0.95rem !important;
-    }
-    
-    /* Radio buttons - consistent spacing */
-    .stRadio {
-        margin-bottom: 0.5rem !important;
-    }
-    .stRadio label {
-        font-size: 0.95rem !important;
-    }
-    
-    /* Column spacing - responsive */
-    [data-testid="column"] {
-        padding: 0 0.75rem !important;
-    }
-    
-    /* Plotly chart containers - responsive */
-    .js-plotly-plot {
-        margin: 0.5rem 0 !important;
-    }
-    
-    /* File uploader - consistent styling */
-    .stFileUploader {
-        margin-bottom: 0.5rem !important;
-    }
-    
-    /* Metric containers */
-    [data-testid="stMetricContainer"] {
-        padding: 0.5rem !important;
-    }
+    /* Markdown text and labels */
+    p {margin: 0.05rem 0 !important; line-height: 1.3 !important;}
+    label {margin-bottom: 0.05rem !important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1486,154 +1396,6 @@ def apply_corridor_to_dem(dem_array, transform, nodata, samples, z_design_arr,
 # BASIN DESIGN FUNCTIONS
 # ============================================================================
 
-def calculate_dem_volume(original_dem, modified_dem, transform, nodata, polygon_coords_xy):
-    """
-    Calculate excavation volume using DEM differencing within a polygon mask.
-    
-    Args:
-        original_dem: Original DEM array
-        modified_dem: Modified DEM array after basin design
-        transform: Rasterio transform
-        nodata: Nodata value
-        polygon_coords_xy: Polygon coordinates in projected CRS for clipping
-    
-    Returns:
-        volume: Excavation volume in m³ (sum of positive differences)
-    """
-    from shapely.geometry import Polygon, Point
-    from rasterio.transform import xy
-    
-    try:
-        # Create polygon mask
-        poly = Polygon(polygon_coords_xy)
-        
-        # Get cell size from transform
-        cell_size = abs(transform.a)  # Assuming square pixels
-        cell_area = cell_size * cell_size
-        
-        # Calculate difference: original - modified (positive = excavation)
-        diff = original_dem - modified_dem
-        
-        # Clip to polygon and sum positive differences
-        volume = 0.0
-        h, w = original_dem.shape
-        
-        for r in range(h):
-            for c in range(w):
-                # Check if pixel is valid
-                if nodata is not None and (original_dem[r, c] == nodata or modified_dem[r, c] == nodata):
-                    continue
-                if np.isnan(original_dem[r, c]) or np.isnan(modified_dem[r, c]):
-                    continue
-                
-                # Get pixel center coordinates
-                x, y = xy(transform, r, c)
-                point = Point(x, y)
-                
-                # Check if point is inside polygon
-                if poly.contains(point):
-                    # Only count positive differences (excavation)
-                    if diff[r, c] > 0:
-                        volume += diff[r, c] * cell_area
-        
-        return volume
-    except Exception as e:
-        st.error(f"Error calculating DEM volume: {e}")
-        return 0.0
-
-def calculate_dem_volume_uncertainty(original_dem, modified_dem, transform, nodata, polygon_coords_xy, analysis_crs, cell_sizes=[0.5, 1.0, 2.0, 3.0, 4.0, 5.0]):
-    """
-    Calculate DEM-based volume with uncertainty analysis across multiple cell sizes.
-    
-    Args:
-        original_dem: Original DEM array
-        modified_dem: Modified DEM array after basin design
-        transform: Rasterio transform
-        nodata: Nodata value
-        polygon_coords_xy: Polygon coordinates in projected CRS
-        analysis_crs: CRS object for the DEMs
-        cell_sizes: List of cell sizes in meters to test
-    
-    Returns:
-        dict with keys: mean, std, min, max, volumes (list of volumes for each cell size)
-    """
-    from rasterio.warp import reproject, Resampling
-    from rasterio.transform import from_bounds
-    from shapely.geometry import Polygon
-    
-    try:
-        volumes = []
-        
-        # Get bounds of polygon
-        poly = Polygon(polygon_coords_xy)
-        minx, miny, maxx, maxy = poly.bounds
-        
-        # Add small buffer
-        buffer = 10.0
-        minx -= buffer
-        miny -= buffer
-        maxx += buffer
-        maxy += buffer
-        
-        for cell_size in cell_sizes:
-            try:
-                # Calculate dimensions for new grid
-                width = int((maxx - minx) / cell_size) + 1
-                height = int((maxy - miny) / cell_size) + 1
-                
-                # Create new transform
-                new_transform = from_bounds(minx, miny, maxx, maxy, width, height)
-                
-                # Resample original DEM
-                orig_resampled = np.empty((height, width), dtype=np.float32)
-                reproject(
-                    source=original_dem,
-                    destination=orig_resampled,
-                    src_transform=transform,
-                    src_crs=analysis_crs,
-                    src_nodata=nodata,
-                    dst_transform=new_transform,
-                    dst_crs=analysis_crs,
-                    dst_nodata=nodata,
-                    resampling=Resampling.bilinear
-                )
-                
-                # Resample modified DEM
-                mod_resampled = np.empty((height, width), dtype=np.float32)
-                reproject(
-                    source=modified_dem,
-                    destination=mod_resampled,
-                    src_transform=transform,
-                    src_crs=analysis_crs,
-                    src_nodata=nodata,
-                    dst_transform=new_transform,
-                    dst_crs=analysis_crs,
-                    dst_nodata=nodata,
-                    resampling=Resampling.bilinear
-                )
-                
-                # Calculate volume at this cell size
-                vol = calculate_dem_volume(orig_resampled, mod_resampled, new_transform, nodata, polygon_coords_xy)
-                volumes.append(vol)
-            except Exception as e:
-                # Skip this cell size if it fails
-                continue
-        
-        if len(volumes) == 0:
-            return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0, "volumes": []}
-        
-        volumes_array = np.array(volumes)
-        return {
-            "mean": float(np.mean(volumes_array)),
-            "std": float(np.std(volumes_array)),
-            "min": float(np.min(volumes_array)),
-            "max": float(np.max(volumes_array)),
-            "volumes": volumes
-        }
-    except Exception as e:
-        st.error(f"Error calculating DEM volume uncertainty: {e}")
-        return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0, "volumes": []}
-
 def calculate_inner_polygon(outer_coords_xy, depth, side_slope, longitudinal_slope=0.0, flow_length=0.0):
     """
     Calculate inner polygon by offsetting outer polygon inward.
@@ -2704,24 +2466,23 @@ with tab1:
                         # Validate coordinates are reasonable
                         if not (-180 <= lon <= 180 and -90 <= lat <= 90):
                             continue
-                        # Use yellow marker with black border (matching Basin Design tab style)
-                        station_label = "Upstream" if station_idx == 0 else "Downstream"
+                        # Use small red marker and label for both
                         folium.CircleMarker(
                             location=[lat, lon],
-                            radius=8,
-                            popup=f'S{station_idx} ({station_label})',
-                            tooltip=f'S{station_idx} ({station_label})',
-                            color='black',
+                            radius=6,
+                            popup=f'Station {station_idx} (S{station_idx})',
+                            tooltip=f'S{station_idx}',
+                            color='#d62728',
                             weight=2,
-                            fillColor='#ffcc00',
+                            fillColor='#d62728',
                             fillOpacity=0.9
                         ).add_to(m)
                         folium.Marker(
                             location=[lat, lon],
                             icon=folium.DivIcon(
-                                html=f'<div style="font-size: 14px; font-weight: bold; color: black; text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white;">S{station_idx}</div>',
-                                icon_size=(30, 15),
-                                icon_anchor=(15, -5)
+                                html=f'<div style="font-size: 12px; font-weight: bold; color: #d62728;">S{station_idx}</div>',
+                                icon_size=(25, 12),
+                                icon_anchor=(12, -5)
                             )
                         ).add_to(m)
             else:
@@ -2878,10 +2639,10 @@ with tab1:
                         channel_display_coords = [[c[1], c[0]] for c in channel_coords]
                         folium.PolyLine(
                             locations=channel_display_coords,
-                            color='#00ff00',
+                            color='#ff9900',
                             weight=4,
                             opacity=0.8,
-                            tooltip='Basin Channel Profile'
+                            tooltip='Basin Channel Profile (Uploaded)'
                         ).add_to(m)
                 
                 # Don't auto-zoom to basin in Input Data tab - keep DEM extent
@@ -2930,7 +2691,7 @@ with tab1:
                 m.fit_bounds(bounds_map)
         
 
-        map_data = st_folium(m, height=650, width=None, returned_objects=["all_drawings"])
+        map_data = st_folium(m, height=700, width=None, returned_objects=["all_drawings"])
 
         # --- Directly below map panel: Download buttons for user-drawn vectors ---
         st.markdown("<div style='margin-top:0.5rem'></div>", unsafe_allow_html=True)
@@ -3912,18 +3673,14 @@ Perpendicular distance from profile centreline where terrain modification applie
         
         ylabel_xs = "Elevation (m)"
         fig_xs.update_layout(
-            title=dict(
-                text=f"Cross-Section at Station {preview_idx_xs} ({stations[preview_idx_xs]:.1f} m)",
-                font=dict(size=16, family="Arial, sans-serif")
-            ),
-            xaxis_title=dict(text="Offset (m) [- = Right, + = Left]", font=dict(size=13)),
-            yaxis_title=dict(text=ylabel_xs, font=dict(size=13)),
+            title=f"Cross-Section at Station {preview_idx_xs} ({stations[preview_idx_xs]:.1f} m)",
+            xaxis_title="Offset (m) [- = Right, + = Left]",
+            yaxis_title=ylabel_xs,
             yaxis=dict(range=[y_min_plot, y_max_plot] if y_min_plot is not None else None),
-            height=600,
-            margin=dict(l=60, r=30, t=60, b=60),
+            height=700,
+            margin=dict(l=50, r=20, t=50, b=50),
             template="plotly_white",
             hovermode='x unified',
-            font=dict(family="Arial, sans-serif", size=11),
         )
         
         # Use force_plot_update in key to force rerender
@@ -4148,7 +3905,7 @@ Perpendicular distance from profile centreline where terrain modification applie
             ])
         
         # Use key with station index and force_plot_update to ensure map refreshes when station changes
-        st_folium(m_xs, height=650, width=None, returned_objects=[], 
+        st_folium(m_xs, height=700, width=None, returned_objects=[], 
                  key=f"map_xs_{current_station_idx_xs}_{st.session_state.force_plot_update}")
         
         # Map legend and description
@@ -4887,18 +4644,14 @@ with _tab2:
                 ))
             
             fig_prof.update_layout(
-                title=dict(
-                    text="Longitudinal Profile (First Vertex → Last Vertex)",
-                    font=dict(size=16, family="Arial, sans-serif")
-                ),
-                xaxis_title=dict(text="Distance from First Vertex (m)", font=dict(size=13)),
-                yaxis_title=dict(text="Elevation (m)", font=dict(size=13)),
+                title="Longitudinal Profile (First Vertex → Last Vertex)",
+                xaxis_title="Distance from First Vertex (m)",
+                yaxis_title="Elevation (m)",
                 yaxis=dict(range=[y_min - y_padding, y_max + y_padding]),
-                height=550,
-                margin=dict(l=60, r=30, t=60, b=60),
+                height=500,
+                margin=dict(l=50, r=20, t=50, b=50),
                 template="plotly_white",
                 annotations=annotations,
-                font=dict(family="Arial, sans-serif", size=11),
             )
             
             # Use key with activeStation to ensure plot refreshes
@@ -5181,7 +4934,7 @@ with _tab2:
                 ])
             
             # Use key with station index and force_plot_update to ensure map refreshes when station changes
-            st_folium(m_prof, height=650, width=None, returned_objects=[],
+            st_folium(m_prof, height=700, width=None, returned_objects=[],
                      key=f"map_prof_{current_station_idx_prof}_{st.session_state.force_plot_update}")
             
             # Map legend and description
@@ -5295,6 +5048,9 @@ if st.session_state.design_mode == "basin":
             channel_coords = st.session_state.get("basin_channel_coords")
             if channel_coords is not None and len(channel_coords) >= 2:
                 st.success(f"✅ Channel defined with {len(channel_coords)} points")
+                if st.button("🗑️ Clear Channel", key="clear_channel_btn"):
+                    st.session_state.basin_channel_coords = None
+                    st.rerun()
             else:
                 st.warning("⚠️ No channel defined. Using automatic flow direction (first vertex → minimum elevation).")
             
@@ -5304,6 +5060,14 @@ if st.session_state.design_mode == "basin":
                 lon, lat = coord[0], coord[1]
                 x, y = transformer_to_analysis.transform(lon, lat)
                 basin_coords_xy.append((x, y))
+            
+            # Debug: Check transformation
+            st.write(f"**Transformation Debug:**")
+            st.write(f"- Source CRS: {src_crs}")
+            st.write(f"- Analysis CRS: {analysis_crs}")
+            if len(basin_coords_xy) > 0:
+                st.write(f"- First coord (lon/lat): {basin_coords[0]}")
+                st.write(f"- First coord (x/y after transform): {basin_coords_xy[0]}")
             
             # Calculate flow length for longitudinal slope calculations
             from shapely.geometry import Polygon, Point
@@ -5469,7 +5233,7 @@ if st.session_state.design_mode == "basin":
             
             col_m1, col_m2, col_m3 = st.columns(3)
             with col_m1:
-                st.metric("Geometric Volume", f"{volume:,.0f} m³")
+                st.metric("Excavation Volume", f"{volume:,.0f} m³")
             with col_m2:
                 st.metric("Outer Area (Top)", f"{outer_area:,.0f} m²")
             with col_m3:
@@ -5477,37 +5241,6 @@ if st.session_state.design_mode == "basin":
                     st.metric("Inner Area (Bottom)", f"{inner_area:,.0f} m²")
                 else:
                     st.metric("Inner Area (Bottom)", "Point/N/A")
-            
-            # DEM-based volume (if computed)
-            if st.session_state.basin_modified_dem is not None:
-                dem_vol = st.session_state.basin_volumes.get("dem_volume", 0.0)
-                uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
-                
-                st.markdown("---")
-                col_dem1, col_dem2 = st.columns([2, 1])
-                with col_dem1:
-                    if uncertainty and uncertainty.get("mean", 0) > 0:
-                        mean_vol = uncertainty["mean"]
-                        std_vol = uncertainty["std"]
-                        min_vol = uncertainty["min"]
-                        max_vol = uncertainty["max"]
-                        st.metric(
-                            "DEM Difference Volume",
-                            f"{mean_vol:,.0f} ± {std_vol:,.0f} m³",
-                            help=f"Range: [{min_vol:,.0f}, {max_vol:,.0f}] m³"
-                        )
-                        st.caption(f"Range: [{min_vol:,.0f}, {max_vol:,.0f}] m³")
-                    else:
-                        st.metric("DEM Difference Volume", f"{dem_vol:,.0f} m³")
-                with col_dem2:
-                    with st.expander("ℹ️ Volume Calculation Methods", expanded=False):
-                        st.markdown("""
-                        **Geometric Volume:**
-                        Volume from designed ditch geometry. Calculated using geometric formulas based on basin parameters (outer polygon area, inner polygon area, depth, and slopes). Assumes perfect geometric shapes.
-                        
-                        **DEM Difference Volume:**
-                        Volume from raster elevation subtraction. Calculated by differencing original and modified DEMs, clipping both to basin polygon, and summing positive differences (excavation) × cell area. Includes uncertainty analysis across cell sizes (0.5-5 m). Reported as mean ± standard deviation with [min, max] range.
-                        """)
             
             # Display inner polygon transform status
             if "basin_inner_polygon_status" in st.session_state:
@@ -5526,64 +5259,90 @@ if st.session_state.design_mode == "basin":
             if inner_coords_xy is None:
                 st.info("ℹ️ Basin is very small or offset exceeds dimensions. The bottom area is minimal (point-like). Volume estimate shown above.")
             
-            # Apply Basin to Terrain section (moved here, right after metrics)
+            # Basin Plan View Map
             st.markdown("---")
-            st.markdown("#### Apply Basin to Terrain")
+            st.markdown("#### Basin Plan View")
             
-            col_exp1, col_exp2 = st.columns([1, 2])
-            with col_exp1:
-                if st.button("🔄 Compute Basin Cut", type="primary"):
-                    with st.spinner("Computing basin modifications..."):
-                        # Convert channel coordinates to projected CRS if channel exists
-                        channel_coords_xy = None
-                        if st.session_state.basin_channel_coords is not None:
-                            channel_coords_xy = []
-                            for lon, lat in st.session_state.basin_channel_coords:
-                                x, y = transformer_to_analysis.transform(lon, lat)
-                                channel_coords_xy.append((x, y))
-                        
-                        new_dem, cut_vol = apply_basin_to_dem(
-                            analysis_dem, analysis_transform, analysis_nodata,
-                            basin_coords_xy, basin_depth, basin_side_slope,
-                            basin_longitudinal_slope, channel_coords_xy
-                        )
-                        st.session_state.basin_modified_dem = new_dem
-                        st.session_state.basin_volumes["cut_volume"] = cut_vol
-                        
-                        # Calculate DEM-based volume with uncertainty analysis (at original DEM resolution)
-                        with st.spinner("Calculating DEM-based volume with uncertainty analysis..."):
-                            # Calculate volume at original DEM resolution
-                            dem_vol = calculate_dem_volume(
-                                analysis_dem, new_dem, analysis_transform, analysis_nodata, basin_coords_xy
-                            )
-                            # Calculate uncertainty across multiple cell sizes
-                            uncertainty = calculate_dem_volume_uncertainty(
-                                analysis_dem, new_dem, analysis_transform, analysis_nodata, 
-                                basin_coords_xy, analysis_crs
-                            )
-                            st.session_state.basin_volumes["dem_volume"] = dem_vol
-                            st.session_state.basin_volumes["dem_uncertainty"] = uncertainty
-                            
-                            # Display results immediately
-                            if uncertainty and uncertainty.get("mean", 0) > 0:
-                                mean_vol = uncertainty["mean"]
-                                std_vol = uncertainty["std"]
-                                min_vol = uncertainty["min"]
-                                max_vol = uncertainty["max"]
-                                st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {mean_vol:,.0f} ± {std_vol:,.0f} m³\n\n**Range:** [{min_vol:,.0f}, {max_vol:,.0f}] m³")
-                            else:
-                                st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {dem_vol:,.0f} m³")
-            
-            with col_exp2:
-                # Show DEM volume uncertainty if computed
-                if st.session_state.basin_modified_dem is not None:
-                    uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
-                    if uncertainty and uncertainty.get("mean", 0) > 0:
-                        mean_vol = uncertainty["mean"]
-                        std_vol = uncertainty["std"]
-                        min_vol = uncertainty["min"]
-                        max_vol = uncertainty["max"]
-                        st.info(f"**DEM Volume:** {mean_vol:,.0f} ± {std_vol:,.0f} m³\n\nRange: [{min_vol:,.0f}, {max_vol:,.0f}] m³")
+            try:
+                m_basin = folium.Map(location=[center_lat, center_lon], zoom_start=14, prefer_canvas=True)
+                
+                # Add satellite and hillshade
+                folium.TileLayer(
+                    tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                    attr='Google', opacity=0.9
+                ).add_to(m_basin)
+                
+                folium.raster_layers.ImageOverlay(
+                    image=hs_norm, bounds=bounds_map, opacity=0.7
+                ).add_to(m_basin)
+                
+                # Add basin polygon
+                if len(basin_coords) > 0:
+                    basin_display = [[c[1], c[0]] for c in basin_coords]
+                    if basin_coords[0] != basin_coords[-1]:
+                        basin_display = basin_display + [basin_display[0]]
+                    folium.Polygon(
+                        locations=basin_display,
+                        color='#0066ff', weight=3, fill=True,
+                        fill_color='#0066ff', fill_opacity=0.2,
+                        tooltip='Basin Polygon'
+                    ).add_to(m_basin)
+                
+                # Add inner polygon if available
+                inner_poly_latlon = st.session_state.get("basin_inner_polygon_coords")
+                if inner_poly_latlon is not None and isinstance(inner_poly_latlon, list) and len(inner_poly_latlon) >= 3:
+                    try:
+                        inner_display = [[c[1], c[0]] for c in inner_poly_latlon]
+                        # Ensure polygon is closed
+                        if inner_display[0] != inner_display[-1]:
+                            inner_display = inner_display + [inner_display[0]]
+                        folium.Polygon(
+                            locations=inner_display,
+                            color='#ff6600', weight=2, fill=True,
+                            fill_color='#ff6600', fill_opacity=0.35,
+                            tooltip='Basin Bottom Area'
+                        ).add_to(m_basin)
+                    except Exception as e:
+                        st.warning(f"Could not display inner polygon: {str(e)[:50]}")
+                
+                # Add channel line and endpoints if available
+                channel_coords = st.session_state.get("basin_channel_coords")
+                if channel_coords is not None and len(channel_coords) >= 2:
+                    channel_display = [[c[1], c[0]] for c in channel_coords]
+                    folium.PolyLine(
+                        locations=channel_display,
+                        color='#00cc00', weight=4, opacity=0.8,
+                        tooltip='Channel Profile'
+                    ).add_to(m_basin)
+                    
+                    # Add S0/S1 endpoint markers
+                    folium.CircleMarker(
+                        location=[channel_coords[0][1], channel_coords[0][0]],
+                        radius=6, color='#d62728', weight=2, fill=True, fillOpacity=0.9,
+                        popup='S0 (Upstream)', tooltip='S0 (Upstream)'
+                    ).add_to(m_basin)
+                    folium.CircleMarker(
+                        location=[channel_coords[-1][1], channel_coords[-1][0]],
+                        radius=6, color='#d62728', weight=2, fill=True, fillOpacity=0.9,
+                        popup='S1 (Downstream)', tooltip='S1 (Downstream)'
+                    ).add_to(m_basin)
+                
+                # Auto-zoom to basin extent
+                basin_lons = [c[0] for c in basin_coords]
+                basin_lats = [c[1] for c in basin_coords]
+                if basin_lons and basin_lats:
+                    lat_range = max(basin_lats) - min(basin_lats)
+                    lon_range = max(basin_lons) - min(basin_lons)
+                    buffer = max(lat_range, lon_range) * 0.1 + 0.0005
+                    basin_bounds = [
+                        [min(basin_lats) - buffer, min(basin_lons) - buffer],
+                        [max(basin_lats) + buffer, max(basin_lons) + buffer]
+                    ]
+                    m_basin.fit_bounds(basin_bounds)
+                
+                st_folium(m_basin, height=500, width=None, returned_objects=[])
+            except Exception as e:
+                st.error(f"Error displaying basin plan view: {str(e)[:100]}")
             
             # Basin Profile Plot
             st.markdown("---")
@@ -5823,16 +5582,11 @@ if st.session_state.design_mode == "basin":
                 ))
             
             fig_basin_prof.update_layout(
-                title=dict(
-                    text='Basin Longitudinal Profile (Upstream to Downstream)',
-                    font=dict(size=16, family="Arial, sans-serif")
-                ),
-                xaxis_title=dict(text='Distance Along Flow Direction (m)', font=dict(size=13)),
-                yaxis_title=dict(text='Elevation (m)', font=dict(size=13)),
-                height=450,
-                margin=dict(l=60, r=30, t=60, b=60),
+                title='Basin Longitudinal Profile (Upstream to Downstream)',
+                xaxis_title='Distance Along Flow Direction (m)',
+                yaxis_title='Elevation (m)',
+                height=400,
                 hovermode='x unified',
-                font=dict(family="Arial, sans-serif", size=11),
                 legend=dict(
                     yanchor="top",
                     y=0.99,
@@ -5956,62 +5710,13 @@ if st.session_state.design_mode == "basin":
                     popup='Basin Channel (Flow Path)',
                     tooltip='Channel Line'
                 ).add_to(m_basin)
-                
-                # Add S0 and S1 station markers
-                if len(channel_coords) >= 2:
-                    # S0 (upstream) - first point
-                    s0_lon, s0_lat = channel_coords[0][0], channel_coords[0][1]
-                    folium.CircleMarker(
-                        location=[s0_lat, s0_lon],
-                        radius=8,
-                        popup='S0 (Upstream)',
-                        tooltip='S0 (Upstream)',
-                        color='black',
-                        weight=2,
-                        fillColor='#ffcc00',
-                        fillOpacity=0.9
-                    ).add_to(m_basin)
-                    folium.Marker(
-                        location=[s0_lat, s0_lon],
-                        icon=folium.DivIcon(
-                            html=f'<div style="font-size: 14px; font-weight: bold; color: black; text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white;">S0</div>',
-                            icon_size=(30, 15),
-                            icon_anchor=(15, -5)
-                        )
-                    ).add_to(m_basin)
-                    
-                    # S1 (downstream) - last point
-                    s1_lon, s1_lat = channel_coords[-1][0], channel_coords[-1][1]
-                    folium.CircleMarker(
-                        location=[s1_lat, s1_lon],
-                        radius=8,
-                        popup='S1 (Downstream)',
-                        tooltip='S1 (Downstream)',
-                        color='black',
-                        weight=2,
-                        fillColor='#ffcc00',
-                        fillOpacity=0.9
-                    ).add_to(m_basin)
-                    folium.Marker(
-                        location=[s1_lat, s1_lon],
-                        icon=folium.DivIcon(
-                            html=f'<div style="font-size: 14px; font-weight: bold; color: black; text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white;">S1</div>',
-                            icon_size=(30, 15),
-                            icon_anchor=(15, -5)
-                        )
-                    ).add_to(m_basin)
             
-            # Auto-zoom to polygon outer boundary extent (prioritize polygon, not channel)
-            # Use polygon bounds if available, otherwise use calculated bounds
-            if "basin_polygon_bounds" in st.session_state and st.session_state.basin_polygon_bounds is not None:
-                m_basin.fit_bounds(st.session_state.basin_polygon_bounds)
-            else:
-                # Fallback to calculated bounds
-                basin_bounds = [
-                    [min(lats) - buffer, min(lons) - buffer],
-                    [max(lats) + buffer, max(lons) + buffer]
-                ]
-                m_basin.fit_bounds(basin_bounds)
+            # Auto-zoom to basin extent with buffer (includes channel if present)
+            basin_bounds = [
+                [min(all_lats) - buffer, min(all_lons) - buffer],
+                [max(all_lats) + buffer, max(all_lons) + buffer]
+            ]
+            m_basin.fit_bounds(basin_bounds)
             
             # Display map
             st_folium(m_basin, height=500, width=None, returned_objects=[])
@@ -6026,20 +5731,39 @@ if st.session_state.design_mode == "basin":
             legend_text += "\n            - The side slopes connect the outer and inner boundaries"
             st.markdown(legend_text)
             
-            # Export section (if basin cut is computed)
-            if st.session_state.basin_modified_dem is not None:
-                st.markdown("---")
-                st.markdown("#### Export Modified Terrain")
-                
-                col_exp_res1, col_exp_res2 = st.columns(2)
-                with col_exp_res1:
+            # Compute and Export section
+            st.markdown("---")
+            st.markdown("#### Apply Basin to Terrain")
+            
+            col_exp1, col_exp2 = st.columns(2)
+            with col_exp1:
+                if st.button("🔄 Compute Basin Cut", type="primary", use_container_width=True):
+                    with st.spinner("Computing basin modifications..."):
+                        # Convert channel coordinates to projected CRS if channel exists
+                        channel_coords_xy = None
+                        if st.session_state.basin_channel_coords is not None:
+                            channel_coords_xy = []
+                            for lon, lat in st.session_state.basin_channel_coords:
+                                x, y = transformer_to_analysis.transform(lon, lat)
+                                channel_coords_xy.append((x, y))
+                        
+                        new_dem, cut_vol = apply_basin_to_dem(
+                            analysis_dem, analysis_transform, analysis_nodata,
+                            basin_coords_xy, basin_depth, basin_side_slope,
+                            basin_longitudinal_slope, channel_coords_xy
+                        )
+                        st.session_state.basin_modified_dem = new_dem
+                        st.session_state.basin_volumes["cut_volume"] = cut_vol
+                        st.success(f"✅ Basin cut computed! Excavation: {cut_vol:,.0f} m³")
+            
+            with col_exp2:
+                if st.session_state.basin_modified_dem is not None:
                     current_res = abs(src_transform.a)
                     target_res = st.number_input(
                         "Export Resolution (m)", 
                         0.1, 100.0, float(current_res), 0.1,
-                        key="basin_export_res_2"
+                        key="basin_export_res"
                     )
-                with col_exp_res2:
                     # Resampling method for basin export
                     resample_method_basin = st.selectbox(
                         "Resampling Method",
@@ -6048,8 +5772,9 @@ if st.session_state.design_mode == "basin":
                         key="basin_resample_method",
                         help="Choose method to resample modified DEM to target resolution"
                     )
-                
-                # Download button
+            
+            # Download button
+            if st.session_state.basin_modified_dem is not None:
                 st.markdown("---")
                 
                 # Prepare GeoTIFF
@@ -6062,7 +5787,7 @@ if st.session_state.design_mode == "basin":
                     final_transform = analysis_transform
                     
                     # Resample if needed
-                    target_res = st.session_state.get("basin_export_res_2", current_res)
+                    target_res = st.session_state.get("basin_export_res", current_res)
                     if abs(target_res - abs(final_transform.a)) > 0.01:
                         bounds = array_bounds(final_dem.shape[0], final_dem.shape[1], final_transform)
                         width = int((bounds[2] - bounds[0]) / target_res)
