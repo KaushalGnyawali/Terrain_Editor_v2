@@ -9,3 +9,4 @@ plotly
 pyproj
 geopandas
 fiona
+scipy

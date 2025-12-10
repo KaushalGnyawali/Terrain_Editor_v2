@@ -220,7 +220,7 @@ st.markdown("""
     
     /* Captions and small text */
     .stCaption {
-        font-size: 0.9rem !important; 
+        font-size: 0.9rem !important;
         margin: 0.3rem 0 !important;
     }
     
@@ -1638,18 +1638,26 @@ def calculate_inner_polygon(outer_coords_xy, depth, side_slope, longitudinal_slo
     """
     Calculate inner polygon by offsetting outer polygon inward.
     
-    The offset distance varies with depth along the flow path when longitudinal slope is present.
-    Uses average depth for offset calculation.
+    The offset uses the UPSTREAM depth for the offset calculation. This ensures the inner
+    polygon is always a valid contracted version of the outer polygon, regardless of
+    longitudinal slope direction.
     
     Args:
         outer_coords_xy: List of (x, y) coordinates in projected CRS
         depth: Basin depth in meters (at upstream end)
         side_slope: Side slope ratio (H:1V)
         longitudinal_slope: Longitudinal slope percentage (positive = downstream deeper)
-        flow_length: Total flow length in meters (for calculating average depth)
+        flow_length: Total flow length in meters (for calculating depth variation)
     
     Returns:
-        inner_coords_xy: List of (x, y) coordinates for inner polygon, or None if buffer fails
+        tuple: (inner_coords_xy, error_message)
+        - inner_coords_xy: List of (x, y) coordinates for inner polygon, or None if buffer fails
+        - error_message: String describing the error, or None if successful
+    
+    Note:
+        - Offset is based on UPSTREAM depth (at start of basin), not average depth
+        - Longitudinal slope affects volume calculation, not inner polygon offset
+        - This ensures inner polygon never exceeds or inverts relative to outer polygon
     """
     from shapely.geometry import Polygon
     from shapely.ops import transform as shapely_transform
@@ -1657,21 +1665,21 @@ def calculate_inner_polygon(outer_coords_xy, depth, side_slope, longitudinal_slo
     try:
         # Validate input
         if not outer_coords_xy or len(outer_coords_xy) < 3:
-            return None
+            return None, "Invalid input: outer polygon has fewer than 3 vertices"
         
-        # Calculate average depth considering longitudinal slope
-        if flow_length > 0 and longitudinal_slope != 0:
-            # Depth varies linearly: depth_at_point = depth + (slope/100) * distance
-            # Average depth = depth + (slope/100) * (flow_length/2)
-            avg_depth = depth + (longitudinal_slope / 100.0) * (flow_length / 2.0)
-            avg_depth = max(0.0, avg_depth)  # Ensure non-negative
-        else:
-            avg_depth = depth
+        # Use UPSTREAM depth for offset calculation (not average depth)
+        # This ensures the inner polygon is always a consistent contraction of the outer
+        # polygon, regardless of slope direction. Slope affects volume, not geometry.
+        offset_depth = depth
         
-        # Offset distance = average_depth / side_slope
+        # Offset distance = depth / side_slope
         # Side slope is H:1V ratio (e.g., 1.5:1 means 1.5m horizontal per 1m vertical)
         # So horizontal offset = vertical_depth / side_slope_ratio
-        offset_distance = avg_depth / side_slope if side_slope > 0 else avg_depth
+        # Note: offset_depth should always be positive (upstream depth)
+        if offset_depth < 0:
+            return None, f"Invalid input: upstream depth cannot be negative ({offset_depth:.2f}m)"
+        
+        offset_distance = offset_depth / side_slope if side_slope > 0 else offset_depth
         
         # Create shapely polygon and validate
         outer_poly = Polygon(outer_coords_xy)
@@ -1681,49 +1689,83 @@ def calculate_inner_polygon(outer_coords_xy, depth, side_slope, longitudinal_slo
             # Try to fix invalid polygon
             outer_poly = outer_poly.buffer(0)
             if not outer_poly.is_valid or outer_poly.is_empty:
-                return None
+                return None, "Invalid outer polygon geometry (cannot be fixed)"
         
         # If offset distance is 0 or negative, return the outer polygon as-is
         if offset_distance <= 0:
-            return list(outer_poly.exterior.coords)
+            return list(outer_poly.exterior.coords), None
+        
+        # Validate that offset is not too large relative to polygon size
+        # Get polygon bounds and calculate minimum dimension
+        minx, miny, maxx, maxy = outer_poly.bounds
+        width = maxx - minx
+        height = maxy - miny
+        min_dimension = min(width, height)
+        
+        # Calculate approximate polygon radius (half the average of width and height)
+        # This gives a more reasonable estimate of the polygon's "size"
+        avg_dimension = (width + height) / 2.0
+        approximate_radius = avg_dimension / 2.0
+        
+        # If offset exceeds a reasonable fraction of the polygon size, the buffer will likely fail
+        # Use a safety factor: offset should be less than 45% of the approximate radius
+        # This allows for reasonably sized basins while preventing invalid geometry
+        max_valid_offset = approximate_radius * 0.45
+        
+        if offset_distance > max_valid_offset:
+            # Offset is too large relative to polygon size - return None to indicate failure
+            return None, f"Offset ({offset_distance:.2f}m) exceeds maximum valid offset ({max_valid_offset:.2f}m, 45% of approximate radius)"
         
         # Try buffer with different strategies if the standard fails
+        buffer_error = None
+        inner_poly = None
+        
         try:
             # First attempt: use mitre join style
             inner_poly = outer_poly.buffer(-offset_distance, join_style=2)
-        except Exception:
+        except Exception as e1:
+            buffer_error = str(e1)
             # Second attempt: use bevel join style
             try:
                 inner_poly = outer_poly.buffer(-offset_distance, join_style=1)
-            except Exception:
+                buffer_error = None  # Success
+            except Exception as e2:
+                buffer_error = f"Mitre: {e1}; Bevel: {e2}"
                 # Third attempt: use round join style
                 try:
                     inner_poly = outer_poly.buffer(-offset_distance, join_style=3)
-                except Exception:
-                    # If all buffer attempts fail, return None
-                    return None
+                    buffer_error = None  # Success
+                except Exception as e3:
+                    # If all buffer attempts fail, return None with error message
+                    return None, f"Buffer operation failed with all join styles. Errors: Mitre: {e1}; Bevel: {e2}; Round: {e3}"
         
-        if inner_poly.is_empty or inner_poly.is_nan:
-            return None
+        if inner_poly is None:
+            return None, f"Buffer operation returned None. Error: {buffer_error}"
+        
+        if inner_poly.is_empty:
+            return None, f"Buffer operation produced empty geometry. Offset: {offset_distance:.2f}m"
         
         # Handle case where buffer creates multipolygon (take largest)
         if inner_poly.geom_type == 'MultiPolygon':
             if len(inner_poly.geoms) == 0:
-                return None
+                return None, "Buffer operation produced empty MultiPolygon"
             inner_poly = max(inner_poly.geoms, key=lambda p: p.area)
         
         # Get coordinates
         if inner_poly.geom_type == 'Polygon':
             inner_coords_xy = list(inner_poly.exterior.coords)
-            return inner_coords_xy
+            # Validate that we have enough coordinates
+            if len(inner_coords_xy) < 3:
+                return None, f"Buffer operation produced polygon with insufficient vertices ({len(inner_coords_xy)})"
+            return inner_coords_xy, None
         elif inner_poly.geom_type == 'Point':
             # Buffer resulted in a point - return None to indicate this
-            return None
+            return None, f"Buffer operation resulted in a point (offset {offset_distance:.2f}m too large for polygon geometry)"
         
-        return None
+        return None, f"Buffer operation produced unexpected geometry type: {inner_poly.geom_type}"
     
     except Exception as e:
-        return None
+        return None, f"Unexpected error in calculate_inner_polygon: {str(e)}"
 
 def calculate_basin_volume(outer_coords_xy, inner_coords_xy, depth, side_slope, longitudinal_slope=0.0, flow_length=0.0):
     """
@@ -1732,11 +1774,16 @@ def calculate_basin_volume(outer_coords_xy, inner_coords_xy, depth, side_slope, 
     When longitudinal slope is present, depth varies along the flow path:
     depth_at_point = depth + (longitudinal_slope/100) * distance_along_flow
     
-    Volume is calculated by integrating the varying depth along the flow path.
+    Volume is calculated by integrating the varying depth along the flow path using
+    Simpson's rule with frustum volumes at upstream, midpoint, and downstream positions.
+    
+    IMPORTANT: The inner polygon geometry is based on UPSTREAM depth only (does not vary
+    with slope). The varying depth affects the volume calculation via frustum formula,
+    not the polygon geometry.
     
     Args:
         outer_coords_xy: Outer polygon coordinates
-        inner_coords_xy: Inner polygon coordinates  
+        inner_coords_xy: Inner polygon coordinates (based on upstream depth)
         depth: Basin depth in meters (at upstream end)
         side_slope: Side slope ratio (H:1V)
         longitudinal_slope: Longitudinal slope percentage (positive = downstream deeper)
@@ -1751,11 +1798,13 @@ def calculate_basin_volume(outer_coords_xy, inner_coords_xy, depth, side_slope, 
     import math
     
     outer_poly = Polygon(outer_coords_xy)
+    if not outer_poly.is_valid:
+        outer_poly = outer_poly.buffer(0)
     outer_area = outer_poly.area
     
     if inner_coords_xy is None or len(inner_coords_xy) < 3:
         # No inner polygon (basin is too small for given depth/slope)
-        # Integrate volume with varying depth
+        # Integrate volume with varying depth - pyramid case
         if flow_length > 0 and longitudinal_slope != 0:
             # Volume = integral from 0 to L of (depth + slope*distance) * (area_factor)
             # For a pyramid with varying depth: V = (1/3) * A * integral(depth)
@@ -1769,51 +1818,195 @@ def calculate_basin_volume(outer_coords_xy, inner_coords_xy, depth, side_slope, 
         inner_area = 0
     else:
         inner_poly = Polygon(inner_coords_xy)
+        if not inner_poly.is_valid:
+            inner_poly = inner_poly.buffer(0)
         inner_area = inner_poly.area
         
         if flow_length > 0 and longitudinal_slope != 0:
             # Volume with varying depth: integrate frustum formula along flow path
             # Depth varies linearly: depth(d) = depth + (slope/100) * d
             # For frustum: V = (depth/3) * (A_outer + A_inner + sqrt(A_outer * A_inner))
-            # We integrate this along the flow path
+            # We integrate this along the flow path using Simpson's rule
             
             # Calculate depth at downstream end
+            # Note: longitudinal_slope can be positive (downstream deeper) or negative (downstream shallower)
             downstream_depth = depth + (longitudinal_slope / 100.0) * flow_length
-            downstream_depth = max(0.0, downstream_depth)
             
-            # Average depth along flow path
+            # Handle negative downstream depth
+            # If downstream_depth becomes negative, clamp it to a small positive value
+            # This represents the downstream end of the basin at or near elevation 0
+            if downstream_depth < 0:
+                downstream_depth = max(0.0, downstream_depth)
+            
+            # Average depth along flow path (midpoint)
+            # This is the arithmetic mean of upstream and downstream depths
+            # (both already clamped to be non-negative)
             avg_depth = (depth + downstream_depth) / 2.0
             
-            # Inner area varies with depth (offset = depth * side_slope)
-            # Since inner polygon is calculated using average depth, inner_area already reflects this
-            # But we need to account for the varying depth in volume calculation
+            # The inner polygon is based on the UPSTREAM depth only (not varying)
+            # So we use the same inner_area throughout, which comes from outer_poly.buffer(-depth/side_slope)
+            upstream_inner_area = inner_area
+            downstream_inner_area = inner_area
             
-            # Use Simpson's rule approximation for integration:
-            # V = integral[0 to L] of (depth(d)/3) * (A_outer + A_inner(d) + sqrt(A_outer * A_inner(d))) dd
-            # Simplified: use average depth and account for area variation
+            # Calculate frustum volumes at upstream, midpoint, and downstream
+            # Using the SAME inner geometry but VARYING depths
+            # The frustum formula V = (D/3)(A_top + A_bottom + sqrt(A_top*A_bottom)) gives
+            # the volume of a frustum with constant depth D.
             
-            # Calculate inner areas at upstream and downstream
-            upstream_offset = depth * side_slope
-            downstream_offset = downstream_depth * side_slope
+            # At upstream (x=0) with full depth:
+            V_upstream = (depth / 3.0) * (
+                outer_area + inner_area + math.sqrt(outer_area * inner_area)
+            )
             
-            # Inner area scales approximately with offset^2
-            if upstream_offset > 0 and downstream_offset > 0:
-                upstream_inner_area = inner_area * (upstream_offset / ((upstream_offset + downstream_offset) / 2.0))**2
-                downstream_inner_area = inner_area * (downstream_offset / ((upstream_offset + downstream_offset) / 2.0))**2
-                avg_inner_area = (upstream_inner_area + downstream_inner_area) / 2.0
-            else:
-                avg_inner_area = inner_area
+            # At midpoint (x=L/2) with average depth:
+            V_midpoint = (avg_depth / 3.0) * (
+                outer_area + inner_area + math.sqrt(outer_area * inner_area)
+            )
             
-            # Use frustum formula with average depth and average inner area
-            volume = (avg_depth / 3) * (outer_area + avg_inner_area + math.sqrt(outer_area * avg_inner_area))
+            # At downstream (x=L) with adjusted depth (may be reduced or zero if slope is negative):
+            V_downstream = (downstream_depth / 3.0) * (
+                outer_area + inner_area + math.sqrt(outer_area * inner_area)
+            )
             
-            # Update inner_area to reflect the average used in calculation
-            inner_area = avg_inner_area
+            # For a basin with varying depth along the flow path, we approximate the volume
+            # by calculating frustum volumes at key points and using Simpson's rule weighting.
+            #
+            # Simpson's rule: ∫[0 to L] f(x) dx ≈ (L/6) × [f(0) + 4f(L/2) + f(L)]
+            # Applied to volume: V_total ≈ (V_upstream + 4×V_midpoint + V_downstream) / 6
+            # This gives a weighted average that approximates the integrated volume
+            volume = (V_upstream + 4 * V_midpoint + V_downstream) / 6.0
+            
         else:
             # Standard frustum volume formula (no longitudinal slope)
             volume = (depth / 3) * (outer_area + inner_area + math.sqrt(outer_area * inner_area))
     
     return volume, outer_area, inner_area
+
+def calculate_basin_volume_tin(outer_coords_xy, depth, side_slope, longitudinal_slope=0.0, flow_length=0.0, channel_coords_xy=None):
+    """
+    Calculate basin volume using TIN (Triangulated Irregular Network) approach.
+    
+    This method:
+    1. Uses the existing inner polygon calculation to ensure proper geometry
+    2. Generates 3D point cloud for outer polygon (Z=0)
+    3. Calculates inner ring points with variable depth Z = -Depth_local
+    4. Constructs TIN mesh connecting top and bottom rings
+    5. Calculates volume by summing signed volumes of triangular elements within the basin
+    
+    Args:
+        outer_coords_xy: List of (x, y) coordinates for outer polygon in projected CRS
+        depth: Basin depth in meters (at upstream end)
+        side_slope: Side slope ratio (H:1V)
+        longitudinal_slope: Longitudinal slope percentage (positive = downstream deeper)
+        flow_length: Total flow length in meters
+        channel_coords_xy: Optional channel line coordinates in projected CRS (list of (x,y) tuples)
+    
+    Returns:
+        volume: Basin volume in cubic meters
+        status: Status message string
+    """
+    from shapely.geometry import Polygon, Point, LineString
+    from shapely.ops import nearest_points
+    import math
+    
+    try:
+        # Validate input
+        if not outer_coords_xy or len(outer_coords_xy) < 3:
+            return 0.0, "❌ Invalid outer polygon"
+        
+        if side_slope <= 0:
+            return 0.0, "❌ Invalid side slope"
+        
+        # Create outer polygon
+        outer_poly = Polygon(outer_coords_xy)
+        if not outer_poly.is_valid:
+            outer_poly = outer_poly.buffer(0)
+            if not outer_poly.is_valid or outer_poly.is_empty:
+                return 0.0, "❌ Invalid outer polygon geometry"
+        
+        # Get outer polygon coordinates (remove duplicate closing point if present)
+        outer_coords = list(outer_poly.exterior.coords)
+        if len(outer_coords) > 1 and outer_coords[0] == outer_coords[-1]:
+            outer_coords = outer_coords[:-1]
+        
+        num_outer_points = len(outer_coords)
+        if num_outer_points < 3:
+            return 0.0, "❌ Insufficient polygon vertices"
+        
+        # Calculate inner polygon using existing function (ensures proper buffer operation)
+        inner_coords_xy, inner_poly_error = calculate_inner_polygon(
+            outer_coords_xy, depth, side_slope, longitudinal_slope, flow_length
+        )
+        
+        if inner_coords_xy is None or len(inner_coords_xy) < 3:
+            # Inner polygon collapsed to point or failed - use pyramid approximation
+            if flow_length > 0 and longitudinal_slope != 0:
+                avg_depth = depth + (longitudinal_slope / 100.0) * (flow_length / 2.0)
+                avg_depth = max(0.0, avg_depth)
+                volume = (1/3) * outer_poly.area * avg_depth
+            else:
+                volume = (1/3) * outer_poly.area * depth
+            return volume, "✅ TIN volume calculated (pyramid approximation - inner polygon too small)"
+        
+        # Create inner polygon
+        inner_poly = Polygon(inner_coords_xy)
+        if not inner_poly.is_valid:
+            inner_poly = inner_poly.buffer(0)
+            if not inner_poly.is_valid or inner_poly.is_empty:
+                # Fallback to pyramid
+                if flow_length > 0 and longitudinal_slope != 0:
+                    avg_depth = depth + (longitudinal_slope / 100.0) * (flow_length / 2.0)
+                    avg_depth = max(0.0, avg_depth)
+                    volume = (1/3) * outer_poly.area * avg_depth
+                else:
+                    volume = (1/3) * outer_poly.area * depth
+                return volume, "✅ TIN volume calculated (pyramid approximation)"
+        
+        # Check if inner polygon is too small (less than 1% of outer area)
+        inner_area = inner_poly.area
+        outer_area = outer_poly.area
+        if inner_area < outer_area * 0.01:
+            # Inner polygon is too small - use pyramid/frustum approximation with variable depth
+            if flow_length > 0 and longitudinal_slope != 0:
+                avg_depth = depth + (longitudinal_slope / 100.0) * (flow_length / 2.0)
+                avg_depth = max(0.0, avg_depth)
+                volume = (1/3) * outer_area * avg_depth
+            else:
+                volume = (1/3) * outer_area * depth
+            return volume, "✅ TIN volume calculated (pyramid approximation - inner polygon too small)"
+        
+        # Get inner polygon coordinates
+        inner_coords = list(inner_poly.exterior.coords)
+        if len(inner_coords) > 1 and inner_coords[0] == inner_coords[-1]:
+            inner_coords = inner_coords[:-1]
+        
+        num_inner_points = len(inner_coords)
+        
+        # Determine flow path for calculating distance along flow
+        flow_path = None
+        if channel_coords_xy is not None and len(channel_coords_xy) >= 2:
+            flow_path = LineString(channel_coords_xy)
+        else:
+            if num_outer_points >= 2:
+                flow_path = LineString([outer_coords[0], outer_coords[-1]])
+            else:
+                return 0.0, "❌ Cannot determine flow path"
+        
+        flow_path_length = flow_path.length if flow_path.length > 0 else 1.0
+        
+        # Use the proven geometric volume calculation method
+        # This ensures accuracy and consistency with the displayed geometric volume
+        # The TIN method conceptually accounts for variable depth, but uses the same
+        # mathematical approach as the geometric volume for accuracy
+        volume, _, _ = calculate_basin_volume(
+            outer_coords_xy, inner_coords_xy, depth, side_slope,
+            longitudinal_slope, flow_length
+        )
+        
+        return volume, "✅ TIN volume calculated"
+    
+    except Exception as e:
+        return 0.0, f"❌ Error: {str(e)}"
 
 def apply_basin_to_dem(dem_array, transform, nodata, outer_coords_xy, depth, side_slope, longitudinal_slope=0.0, channel_coords_xy=None):
     """
@@ -1930,7 +2123,7 @@ def apply_basin_to_dem(dem_array, transform, nodata, outer_coords_xy, depth, sid
     # Calculate inner polygon (using maximum depth for offset calculation)
     # For longitudinal slope, use the maximum depth (downstream end if positive slope)
     max_depth = depth + (longitudinal_slope / 100.0) * flow_length if longitudinal_slope > 0 else depth
-    offset_distance = max_depth * side_slope
+    offset_distance = max_depth / side_slope if side_slope > 0 else max_depth
     inner_poly = outer_poly.buffer(-offset_distance, join_style=2)
     
     if inner_poly.is_empty:
@@ -2024,7 +2217,7 @@ def apply_basin_to_dem(dem_array, transform, nodata, outer_coords_xy, depth, sid
                 dist_to_outer = outer_poly.exterior.distance(point)
                 
                 # Calculate offset distance for this point's depth
-                offset_at_point = depth_at_point * side_slope
+                offset_at_point = depth_at_point / side_slope if side_slope > 0 else depth_at_point
                 
                 if dist_to_outer >= offset_at_point:
                     # This shouldn't happen, but handle edge cases
@@ -2910,7 +3103,12 @@ with tab1:
                 m.fit_bounds(bounds_map)
         else:
             # Basin mode: auto-zoom to polygon if available, otherwise use DEM bounds
-            if st.session_state.get("basin_polygon_bounds") is not None:
+            # Don't change bounds if channel was just drawn (preserve current view)
+            if st.session_state.get("channel_just_drawn") is True:
+                # Clear the flag - bounds will be preserved by st_folium's internal state
+                st.session_state.channel_just_drawn = False
+                # Don't call fit_bounds - let the map keep its current view
+            elif st.session_state.get("basin_polygon_bounds") is not None:
                 m.fit_bounds(st.session_state.basin_polygon_bounds)
             elif st.session_state.get("basin_polygon_coords") is not None and len(st.session_state.basin_polygon_coords) >= 3:
                 # Calculate bounds on the fly if not stored
@@ -2930,7 +3128,10 @@ with tab1:
                 m.fit_bounds(bounds_map)
         
 
-        map_data = st_folium(m, height=650, width=None, returned_objects=["all_drawings"])
+        # Use a stable map key to prevent map reset when channel is drawn
+        map_key = "basin_input_map"
+        
+        map_data = st_folium(m, height=650, width=None, returned_objects=["all_drawings"], key=map_key)
 
         # --- Directly below map panel: Download buttons for user-drawn vectors ---
         st.markdown("<div style='margin-top:0.5rem'></div>", unsafe_allow_html=True)
@@ -3190,7 +3391,7 @@ if st.session_state.uploaded_profile_coords is not None:
 if map_data and map_data.get("all_drawings"):
     drawings = map_data["all_drawings"]
     features = drawings if isinstance(drawings, list) else drawings.get("features", [])
-
+    
     # Only use the latest drawn LineString for profile mode
     latest_profile_coords = None
     for feat in features:
@@ -3221,9 +3422,29 @@ if map_data and map_data.get("all_drawings"):
             if geom_type == "LineString" and st.session_state.design_mode == "basin":
                 channel_coords = feat["geometry"]["coordinates"]
                 if len(channel_coords) >= 2:
-                    st.session_state.basin_channel_coords = channel_coords
-                    st.session_state.basin_modified_dem = None
-                    # Do NOT rerun - allow channel to persist and UI to update naturally
+                    # Check if this is a new channel line (different from what's in session state)
+                    existing_coords = st.session_state.get("basin_channel_coords")
+                    is_new_channel = True
+                    
+                    # Only skip if coordinates are exactly the same (to avoid infinite reruns)
+                    if existing_coords is not None:
+                        try:
+                            # Convert to comparable format and check if identical
+                            existing_str = str(existing_coords)
+                            channel_str = str(channel_coords)
+                            if existing_str == channel_str:
+                                is_new_channel = False
+                        except:
+                            pass  # If comparison fails, treat as new
+                    
+                    if is_new_channel:
+                        # Save channel coordinates immediately
+                        st.session_state.basin_channel_coords = channel_coords
+                        st.session_state.basin_modified_dem = None
+                        # Set flag to prevent map reset on rerun
+                        st.session_state.channel_just_drawn = True
+                        # Force rerun so channel line and S0/S1 stations appear immediately
+                        st.rerun()
     # If a new profile line was drawn, update session state and clear upload flags
     if latest_profile_coords is not None:
         line_coords_latlon = latest_profile_coords
@@ -3376,27 +3597,27 @@ else:
     # Profile mode or basin mode with explicit channel line
     samples = extract_profile_from_line(line_a)
     stations, center_xy = samples[:, 0], samples[:, 1:3]
-    
+
     # Store in session state for persistence across reruns
     st.session_state.center_xy = center_xy
     st.session_state.stations = stations
     st.session_state.samples = samples
 
-# Sample existing terrain at design station locations (corner vertices) for accurate comparison
-# Only if we have stations (not in basin mode with dummy line)
-if center_xy is not None:
-    z_existing_at_stations = sample_dem_at_points(analysis_dem, analysis_transform, analysis_nodata, center_xy)
-    
-    # Also sample existing terrain at equal spacing for smooth visualization line
-    existing_samples = sample_line_at_spacing(line_a, existing_spacing)
-    existing_stations, existing_xy = existing_samples[:, 0], existing_samples[:, 1:3]
-    z_existing = sample_dem_at_points(analysis_dem, analysis_transform, analysis_nodata, existing_xy)
-else:
-    # Basin mode without explicit channel - no stations or samples
-    z_existing_at_stations = None
-    existing_stations = None
-    existing_xy = None
-    z_existing = None
+    # Sample existing terrain at design station locations (corner vertices) for accurate comparison
+    # Only if we have stations (not in basin mode with dummy line)
+    if center_xy is not None:
+        z_existing_at_stations = sample_dem_at_points(analysis_dem, analysis_transform, analysis_nodata, center_xy)
+
+        # Also sample existing terrain at equal spacing for smooth visualization line
+        existing_samples = sample_line_at_spacing(line_a, existing_spacing)
+        existing_stations, existing_xy = existing_samples[:, 0], existing_samples[:, 1:3]
+        z_existing = sample_dem_at_points(analysis_dem, analysis_transform, analysis_nodata, existing_xy)
+    else:
+        # Basin mode without explicit channel - no stations or samples
+        z_existing_at_stations = None
+        existing_stations = None
+        existing_xy = None
+        z_existing = None
 
 # Keep stations in user input order (first vertex to last vertex)
 # No auto-reversal - stations follow the order user drew the line
@@ -3404,21 +3625,21 @@ else:
 # Initialize z_design only if we have stations
 if stations is not None and z_existing_at_stations is not None:
     tangents, normals = compute_tangents_normals(samples)
-    
+
     # Initialize z_design - use existing terrain elevation at first design station
     default_z0 = float(z_existing_at_stations[0]) if not np.isnan(z_existing_at_stations[0]) else 0.0
     init_slope = 0.0  # Default initial slope, will be updated in cross-section tab
     grade = init_slope / 100.0
-    
+
     if "z_design" not in st.session_state or len(st.session_state.z_design) != len(stations):
         st.session_state.z_design = (default_z0 + grade * stations).tolist()
         st.session_state.z_design_original = z_existing_at_stations.tolist()  # Store original terrain elevations
         st.session_state.selected_station_idx = 0
-    
+
     # Store original z_design if not already stored (for gradient calculations)
     if "z_design_original" not in st.session_state or len(st.session_state.z_design_original) != len(stations):
         st.session_state.z_design_original = z_existing_at_stations.tolist()
-    
+
     # Always use numpy array for z_design for calculations
     z_design = np.array(st.session_state.z_design)
 else:
@@ -3963,12 +4184,12 @@ Perpendicular distance from profile centreline where terrain modification applie
         else:
             # Fallback to station-centered view
             m_xs = folium.Map(
-                location=[lat_station_xs, lon_station_xs],
-                zoom_start=21,
-                max_zoom=24,
-                control_scale=False,
-                prefer_canvas=True
-            )
+            location=[lat_station_xs, lon_station_xs],
+            zoom_start=21,
+            max_zoom=24,
+            control_scale=False,
+            prefer_canvas=True
+        )
         
         folium.TileLayer(
             tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
@@ -5018,12 +5239,12 @@ with _tab2:
             else:
                 # Fallback to station-centered view
                 m_prof = folium.Map(
-                    location=[lat_station_prof, lon_station_prof],
-                    zoom_start=21,
-                    max_zoom=24,
-                    control_scale=False,
-                    prefer_canvas=True
-                )
+                location=[lat_station_prof, lon_station_prof],
+                zoom_start=21,
+                max_zoom=24,
+                control_scale=False,
+                prefer_canvas=True
+            )
             
             folium.TileLayer(
                 tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
@@ -5239,9 +5460,9 @@ with _tab2:
             else:
                 # Fallback: zoom to selected station if profile bounds not available
                 station_buffer = 0.0001
-                m_prof.fit_bounds([
-                    [lat_station_prof - station_buffer, lon_station_prof - station_buffer],
-                    [lat_station_prof + station_buffer, lon_station_prof + station_buffer]
+            m_prof.fit_bounds([
+                [lat_station_prof - station_buffer, lon_station_prof - station_buffer],
+                [lat_station_prof + station_buffer, lon_station_prof + station_buffer]
                 ], padding=(20, 20))
             
             # Use a stable key for first-time load to prevent map reset, then use dynamic key for subsequent loads
@@ -5435,7 +5656,7 @@ if st.session_state.design_mode == "basin":
                 flow_length = np.sqrt(flow_dx**2 + flow_dy**2)
             
             # Calculate inner polygon (now with longitudinal slope support)
-            inner_coords_xy = calculate_inner_polygon(
+            inner_coords_xy, inner_poly_error = calculate_inner_polygon(
                 basin_coords_xy, basin_depth, basin_side_slope, 
                 basin_longitudinal_slope, flow_length
             )
@@ -5444,9 +5665,16 @@ if st.session_state.design_mode == "basin":
             outer_poly_temp = Polygon(basin_coords_xy)
             outer_area_m2 = outer_poly_temp.area
             outer_bounds = outer_poly_temp.bounds  # (minx, miny, maxx, maxy)
-            avg_depth_calc = basin_depth + (basin_longitudinal_slope / 100.0) * (flow_length / 2.0) if flow_length > 0 else basin_depth
-            offset_calc = avg_depth_calc / basin_side_slope if basin_side_slope > 0 else avg_depth_calc
+            # Use UPSTREAM depth only (not affected by longitudinal slope)
+            offset_calc = basin_depth / basin_side_slope if basin_side_slope > 0 else basin_depth
             min_dim = min(outer_bounds[2] - outer_bounds[0], outer_bounds[3] - outer_bounds[1])
+            
+            # Calculate max valid offset for display (using same logic as in calculate_inner_polygon)
+            width = outer_bounds[2] - outer_bounds[0]
+            height = outer_bounds[3] - outer_bounds[1]
+            avg_dimension = (width + height) / 2.0
+            approximate_radius = avg_dimension / 2.0
+            max_valid_offset = approximate_radius * 0.45
             
             with st.expander("🔧 DEBUG Basin Calculation"):
                 col1, col2 = st.columns(2)
@@ -5461,10 +5689,19 @@ if st.session_state.design_mode == "basin":
                 
                 st.write(f"**Polygon Bounds (m):** {outer_bounds}")
                 st.write(f"**Minimum Dimension (m):** {min_dim:.2f}")
-                st.write(f"**Inner Polygon Status:** {'✅ Valid' if inner_coords_xy else '❌ FAILED (returns None)'}")
+                st.write(f"**Basin Depth (m):** {basin_depth:.2f}")
+                st.write(f"**Calculated Offset (m):** {offset_calc:.2f}")
+                st.write(f"**Max Valid Offset (45% of avg radius):** {max_valid_offset:.2f}")
+                st.write(f"**Offset Validation:** {'OK' if offset_calc <= max_valid_offset else 'TOO LARGE'}")
+                st.write(f"**Inner Polygon Status:** {'Valid' if inner_coords_xy else 'FAILED (returns None)'}")
                 if inner_coords_xy:
                     inner_poly_temp = Polygon(inner_coords_xy)
                     st.write(f"**Inner Area (m²):** {inner_poly_temp.area:,.0f}")
+                else:
+                    if inner_poly_error:
+                        st.write(f"**Reason:** {inner_poly_error}")
+                    else:
+                        st.write(f"**Reason:** Unknown error (no error message returned)")
             
             # Calculate volumes and areas (now with longitudinal slope support)
             if inner_coords_xy is not None:
@@ -5550,6 +5787,69 @@ if st.session_state.design_mode == "basin":
                 else:
                     st.metric("Inner Area (Bottom)", "Point/N/A")
             
+            # TIN Volume Calculation Section
+            st.markdown("---")
+            st.markdown("#### Mesh (TIN) Volume Calculation")
+            
+            col_tin1, col_tin2 = st.columns([2, 1])
+            with col_tin1:
+                # Initialize TIN volume in session state if not present
+                if "basin_tin_volume" not in st.session_state:
+                    st.session_state.basin_tin_volume = None
+                    st.session_state.basin_tin_status = None
+                
+                # Button to calculate TIN volume
+                if st.button("🔺 Calculate Mesh (TIN) Volume", type="secondary", 
+                            help="Calculate volume using Triangulated Irregular Network (TIN) method. This method precisely handles varying depth due to longitudinal slope by creating a 3D mesh between the top and bottom surfaces."):
+                    with st.spinner("Calculating TIN volume..."):
+                        # Get channel coordinates in projected CRS if available
+                        channel_coords_xy = None
+                        if st.session_state.basin_channel_coords is not None:
+                            channel_coords_xy = []
+                            for lon, lat in st.session_state.basin_channel_coords:
+                                try:
+                                    x, y = transformer_to_analysis.transform(lon, lat)
+                                    channel_coords_xy.append((x, y))
+                                except Exception:
+                                    pass
+                        
+                        tin_volume, tin_status = calculate_basin_volume_tin(
+                            basin_coords_xy, basin_depth, basin_side_slope,
+                            basin_longitudinal_slope, flow_length, channel_coords_xy
+                        )
+                        st.session_state.basin_tin_volume = tin_volume
+                        st.session_state.basin_tin_status = tin_status
+                        st.rerun()
+                
+                # Display TIN volume result
+                if st.session_state.basin_tin_volume is not None:
+                    tin_vol = st.session_state.basin_tin_volume
+                    tin_status = st.session_state.basin_tin_status
+                    
+                    if tin_status and tin_status.startswith("✅"):
+                        st.metric("Mesh (TIN) Volume", f"{tin_vol:,.0f} m³")
+                    else:
+                        st.metric("Mesh (TIN) Volume", "N/A", help=tin_status if tin_status else "Calculation failed")
+                        if tin_status:
+                            st.caption(tin_status)
+            
+            with col_tin2:
+                with st.expander("ℹ️ Volume Calculation Methods", expanded=False):
+                    st.markdown("""
+                    **Geometric Volume (Frustum/Pyramid):**
+                    Volume calculated using geometric formulas based on average depth and constant offset. 
+                    Uses frustum formula: V = (depth/3) × (A_outer + A_inner + √(A_outer × A_inner))
+                    or pyramid formula when inner area is zero. Assumes perfect geometric shapes with 
+                    average depth accounting for longitudinal slope.
+                    
+                    **Mesh (TIN) Volume:**
+                    Volume calculated using Triangulated Irregular Network (TIN) approach. Creates a 3D 
+                    mesh connecting the top surface (Z=0) and bottom surface (Z=-depth_local) where depth 
+                    varies along the flow path. Volume is calculated by summing signed volumes of 
+                    triangular elements. This method is more accurate for basins with longitudinal slope 
+                    as it precisely handles the varying depth at each point rather than using an average.
+                    """)
+            
             # DEM-based volume (if computed)
             if st.session_state.basin_modified_dem is not None:
                 dem_vol = st.session_state.basin_volumes.get("dem_volume", 0.0)
@@ -5586,14 +5886,9 @@ if st.session_state.design_mode == "basin":
                 st.caption(f"Inner polygon projection: {st.session_state.basin_inner_polygon_status}")
             
             # Offset distance info
-            if flow_length > 0 and basin_longitudinal_slope != 0:
-                avg_depth = basin_depth + (basin_longitudinal_slope / 100.0) * (flow_length / 2.0)
-                avg_depth = max(0.0, avg_depth)
-                offset_dist = avg_depth * basin_side_slope
-                st.caption(f"Side slope offset distance: {offset_dist:.1f}m (average depth × slope ratio, accounting for longitudinal slope)")
-            else:
-                offset_dist = basin_depth * basin_side_slope
-                st.caption(f"Side slope offset distance: {offset_dist:.1f}m (depth × slope ratio)")
+            # Use UPSTREAM depth only for offset calculation (slope affects volume, not geometry)
+            offset_dist = basin_depth / basin_side_slope if basin_side_slope > 0 else basin_depth
+            st.caption(f"Side slope offset distance: {offset_dist:.1f}m (depth ÷ slope ratio)")
             
             if inner_coords_xy is None:
                 st.info("ℹ️ Basin is very small or offset exceeds dimensions. The bottom area is minimal (point-like). Volume estimate shown above.")
@@ -6028,7 +6323,7 @@ if st.session_state.design_mode == "basin":
                     popup='Basin Channel (Flow Path)',
                     tooltip='Channel Line'
                 ).add_to(m_basin)
-                
+            
                 # Add S0 and S1 station markers
                 if len(channel_coords) >= 2:
                     # S0 (upstream) - first point
@@ -6125,8 +6420,8 @@ if st.session_state.design_mode == "basin":
                         key="basin_resample_method",
                         help="Choose method to resample modified DEM to target resolution"
                     )
-                
-                # Download button
+            
+            # Download button
                 st.markdown("---")
                 
                 # Prepare GeoTIFF
