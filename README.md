@@ -1,203 +1,82 @@
-# Terrain Editor Pro v8.0 - Quick Start Guide
+# Terrain Editor Pro — Quick Start
 
-## 🚀 SETUP
+This repository contains the Streamlit application `terrain_editor.py` for interactive
+design of berms, ditches, swales and polygonal basins on local DEMs. The app lets you
+draw features on a map, edit cross-sections and compute volumes using multiple methods.
 
-### Install Dependencies
+See also: `PROJECT_SUMMARY.md` and `CALCULATION_METHODS.md` for high-level and
+calculation-specific documentation.
 
-**Option 1: Using requirements.txt (Recommended)**
-```bash
+## Install
+
+Open PowerShell and run:
+
+```powershell
 pip install -r requirements.txt
 ```
 
-**Option 2: Manual Installation**
-```bash
-pip install streamlit rasterio numpy pandas folium streamlit-folium shapely plotly pyproj geopandas fiona
+If you prefer, install manually:
+
+```powershell
+pip install streamlit rasterio numpy pandas folium streamlit-folium shapely plotly pyproj
 ```
 
-### Run the Application
+Optional (for shapefile handling):
 
-```bash
+```powershell
+pip install geopandas fiona
+```
+
+## Run the app
+
+```powershell
 streamlit run terrain_editor.py
 ```
 
-The application will open in your default web browser at `http://localhost:8501`
+The app will open in your browser at `http://localhost:8501`.
 
-## 📁 FOLDER STRUCTURE
+## Quickstart — folder structure
+
+Place your input files in the `Data/` folder alongside `terrain_editor.py`:
 
 ```
-your_project/
-├── terrain_editor.py
-└── Data/
-    └── dem.tif  ← Your DEM file
+project_root/
+├─ terrain_editor.py
+└─ Data/
+   ├─ dem.tif          # required (GeoTIFF)
+   ├─ profile.*        # optional: profile.shp (zipped) or profile.kml
+   └─ basin/           # optional supporting files
 ```
 
-## 🎯 WORKFLOW
+## High-level workflow
 
-### 0. DESIGN MODE SELECTION
+1. Start the app and choose Design Mode: `Profile Line (Berm/Ditch)` or `Polygon Basin`.
+2. Load or upload a DEM (GeoTIFF). If available, the app will auto-load `Data/dem.tif`.
+3. Draw or upload a profile line (polyline) for corridor designs or draw a polygon for basin designs.
+4. Configure template parameters (berm/ditch/swale) or basin depth/side slope/longitudinal slope.
+5. Inspect cross-sections and profile plots, adjust stations/elevations as needed.
+6. Calculate volumes using the provided methods and export vector outputs (Shapefile/KML/GeoJSON) or the modified DEM.
 
-**Choose your design mode:**
-- **Profile Line (Berm/Ditch)**: Linear corridor design for berms, ditches, and swales
-- **Polygon Basin**: Debris storage basin design with polygon boundary
+## Loading data
 
-✅ **Result**: Appropriate tabs and tools enabled
+- DEM: place `dem.tif` in `Data/` or upload via the app (GeoTIFF required).
+- Profile (optional): upload a Shapefile ZIP or KML (polyline). The app will attempt to detect CRS and transform to lat/lon.
+- Basin polygon (optional): upload a Shapefile ZIP or KML (polygon) or draw on the map.
 
----
+## Exporting results
 
-### 1. INPUT DATA TAB - Draw Profile Line or Basin Polygon
+On the map panels and download sections you can export:
+- Shapefile (ZIP), KML, GeoJSON for profile lines, basin polygons, and channel lines.
+- Modified DEM export available from the Basin Design workflow (GeoTIFF).
 
-**For Profile Line Mode:**
-✏️ **Draw your profile line on the map**
-- Click the polyline tool (📏)
-- Draw from **any direction** (high→low or low→high)
-- System auto-corrects to upstream→downstream
+## Links
+- Calculation details and worked examples: `CALCULATION_METHODS.md`
+- Project summary and features: `PROJECT_SUMMARY.md`
 
-**For Basin Mode:**
-✏️ **Draw basin polygon on the map**
-- Click the polygon tool (⬟)
-- Draw a closed polygon for the basin boundary
-- Map auto-zooms to polygon extent after drawing
+## Troubleshooting
+- If the app cannot find a DEM, ensure `Data/dem.tif` exists and the working directory is the project root.
+- For shapefiles install `geopandas` and `fiona` (optional). If shapefile CRS is not geographic the app attempts to reproject to the analysis CRS.
 
-✏️ **Draw channel line (optional)**
-- Click the polyline tool (green)
-- Draw from upstream to downstream inside the basin
-- Channel line stays visible on first draw (no app reset)
-- S0 (upstream) and S1 (downstream) markers appear automatically
-
-✅ **Result**: Profile line or basin polygon on map with S0/S1 markers (if channel drawn)
-
----
-
-### 2A. PROFILE MODE - Cross-Section Tab Setup
-
-⚙️ **Configure extraction**
-```
-Number of Stations: [50]     ← How many points (10-500)
-Initial Slope: [0.0] %       ← Starting slope (optional)
-```
-
-📋 **Choose template**
-- **Berm + Ditch**: For debris flow barriers
-- **Swale**: For drainage channels
-
-🎛️ **Set parameters**
-```
-Berm + Ditch:
-├─ Berm Top Width: 4.0 m
-├─ Berm Side Slope: 2.0 (H:V)
-├─ Ditch Bottom Width: 2.0 m
-├─ Ditch Depth: 1.5 m
-├─ Ditch Side Slope: 3.0 (H:V)
-└─ Ditch Side: [Left ▼]    ← Left or Right side
-
-Influence Width: 20.0 m  ← Corridor width (±20m)
-```
-
-✅ **Result**: Profile extracted, stations numbered 0→N
-
----
-
-### 2B. BASIN MODE - Basin Design Tab Setup
-
-⚙️ **Configure basin parameters**
-```
-Basin Depth: [3.0] m          ← Depth at upstream (0.5-20m)
-Side Slope: [1.5] H:1V        ← Side slope ratio (0.5-10)
-Longitudinal Slope: [0.0] %   ← Slope along flow path (-50% to +50%)
-```
-
-📏 **Optional: Draw channel line**
-- Draw green polyline on Input Data map to define flow path
-- If not drawn, uses first vertex → minimum elevation
-
-✅ **Result**: Basin metrics calculated (volume, areas)
-
----
-
-### 3. PROFILE MODE - Cross-Section Tab Browse & Edit
-
-🔍 **Navigate stations**
-```
-┌──────────────┐
-│ ◄ Prev | Next►│  ← Click to browse
-├──────────────┤
-│  [═══╬═══]   │  ← Or use slider
-│  Station 25  │
-│  250.5 m     │
-└──────────────┘
-```
-
-📊 **View cross-section**
-- Existing terrain (gray)
-- Template design (green)
-- Final result (red)
-
-✏️ **Edit elevation**
-```
-Elev: 245.3 m
-[═══╬═══]     ← Drag to adjust ±10m
-```
-
-🔬 **Adjust vertical exaggeration**
-```
-V.E.: 2.5×
-[═══╬═══]     ← See slopes clearly
-```
-
-✅ **Result**: Cross-section edited at each station
-
----
-
-### 4. PROFILE MODE - Profile Tab View & Edit
-
-📈 **Full profile view**
-- Distance-elevation plot
-- Upstream (Station 0) → Downstream (Station N)
-- Shows downward slope
-- Updates automatically when gradients or elevations change
-
-✏️ **Three editing methods**
-
-**Method 1: Design Gradient Slope**
-- Select station with Prev/Next or station number input
-- Set gradient slope (%) relative to horizontal
-- Gradient applies to all downstream stations until next gradient station
-- 0% = flat line (same elevation)
-- Positive = rising slope, Negative = falling slope
-
-**Method 2: Elevation Slider**
-- Select station with Prev/Next or station number input
-- Adjust elevation with slider (±10m range)
-- Updates design profile and modified DEM
-
-**Method 3: Elevation Table**
-- Only the **selected station** can be edited in the table
-- Edit Design_Elev value for the selected station
-- Changes update gradients, plot, and modified DEM automatically
-- Other stations are protected from editing
-
-✅ **Result**: Design profile verified with gradients and elevations
-
----
-
-### 5. BASIN MODE - Basin Design Tab Features
-
-📊 **Basin Metrics Display**
-```
-Geometric Volume: 4,934 m³
-Outer Area (Top): 1,853 m²
-Inner Area (Bottom): 328 m²
-
-DEM Difference Volume: 4,856 ± 124 m³
-Range: [4,623, 5,089] m³
-```
-
-**Volume Calculation Methods:**
-- **Geometric Volume**: Calculated from designed ditch geometry using geometric formulas
-- **DEM Difference Volume**: Calculated by differencing original and modified DEMs, with uncertainty analysis across cell sizes (0.5-5 m)
-
-📈 **Longitudinal Profile Plot**
-- Shows existing ground and basin bottom elevation
-- Upstream (S0) and downstream (S1) markers
 - Updates automatically with longitudinal slope
 
 🗺️ **Basin Plan View Map**

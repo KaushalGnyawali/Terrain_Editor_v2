@@ -122,147 +122,255 @@ st.markdown("# ⛰️Kaushal’s Terrain Editor.")
 
 st.markdown("""
 <style>
-    /* Responsive layout with consistent spacing */
+    /* ============================================================================ */
+    /* RESPONSIVE LAYOUT & SPACING */
+    /* ============================================================================ */
     .main > div {padding-top: 0.5rem;}
     .block-container {
-        padding-top: 0.5rem; 
-        padding-bottom: 0.5rem; 
-        padding-left: 1rem; 
-        padding-right: 1rem;
+        padding-top: 1rem; 
+        padding-bottom: 1rem; 
+        padding-left: 1.5rem; 
+        padding-right: 1.5rem;
         max-width: 100%;
     }
     
-    /* Typography - slightly larger, clearer fonts */
+    /* ============================================================================ */
+    /* TYPOGRAPHY - MODERN HIERARCHY */
+    /* ============================================================================ */
     h1 {
-        font-size: 1.85rem !important; 
-        font-weight: 600 !important;
-        margin-bottom: 0.3rem !important; 
-        margin-top: 0.3rem !important;
+        font-size: 2.2rem !important; 
+        font-weight: 700 !important;
+        margin-bottom: 0.5rem !important; 
+        margin-top: 0.5rem !important;
+        letter-spacing: -0.5px;
     }
     h2 {
-        font-size: 1.5rem !important; 
-        font-weight: 600 !important;
-        margin: 0.4rem 0 0.3rem 0 !important;
+        font-size: 1.7rem !important; 
+        font-weight: 700 !important;
+        margin: 1.2rem 0 0.6rem 0 !important;
+        letter-spacing: -0.3px;
     }
     h3 {
-        font-size: 1.2rem !important; 
-        font-weight: 600 !important;
-        margin: 0.5rem 0 0.4rem 0 !important;
+        font-size: 1.35rem !important; 
+        font-weight: 650 !important;
+        margin: 1rem 0 0.5rem 0 !important;
+        letter-spacing: -0.2px;
     }
     h4 {
-        font-size: 1.1rem !important; 
+        font-size: 1.15rem !important; 
         font-weight: 600 !important;
-        margin: 0.4rem 0 0.3rem 0 !important;
+        margin: 0.8rem 0 0.4rem 0 !important;
     }
     
-    /* Consistent spacing in forms */
-    .stForm {margin-bottom: 0.5rem !important;}
-    .stFormSubmitButton > button {width: 100%;}
-    
-    /* Divider - consistent spacing */
+    /* ============================================================================ */
+    /* SECTION DIVIDERS */
+    /* ============================================================================ */
     hr {
-        margin: 0.75rem 0 !important; 
-        height: 1px !important;
+        margin: 1.2rem 0 !important; 
+        height: 2px !important;
         border: none;
-        background-color: #e0e0e0;
+        background: linear-gradient(to right, #e0e0e0 0%, #f0f0f0 50%, #e0e0e0 100%);
     }
     
-    /* Button styling - slightly larger */
+    /* ============================================================================ */
+    /* BUTTONS - MODERN STYLING */
+    /* ============================================================================ */
     .stButton > button {
         width: 100%;
-        padding: 0.5rem 1rem !important;
-        font-size: 0.95rem !important;
-        border-radius: 0.4rem !important;
-        font-weight: 500 !important;
+        padding: 0.65rem 1.2rem !important;
+        font-size: 1rem !important;
+        border-radius: 0.5rem !important;
+        font-weight: 600 !important;
+        border: none !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
     }
     
-    /* Input fields - improved readability */
+    .stButton > button:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+        transform: translateY(-1px);
+    }
+    
+    /* ============================================================================ */
+    /* INPUT FIELDS & FORMS */
+    /* ============================================================================ */
+    .stForm {
+        margin-bottom: 1rem !important;
+        padding: 1rem !important;
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 0.5rem !important;
+        background-color: #fafafa !important;
+    }
+    
+    .stFormSubmitButton > button {width: 100%;}
+    
     .stNumberInput input, 
     .stTextInput input,
     .stSelectbox select {
-        padding: 0.5rem 0.7rem !important;
-        font-size: 0.95rem !important;
+        padding: 0.7rem 0.9rem !important;
+        font-size: 1rem !important;
+        border-radius: 0.4rem !important;
+        border: 1px solid #d0d0d0 !important;
     }
     
-    /* Slider styling - consistent spacing */
+    .stNumberInput input:focus, 
+    .stTextInput input:focus,
+    .stSelectbox select:focus {
+        border-color: #0066cc !important;
+        box-shadow: 0 0 0 3px rgba(0,102,204,0.1) !important;
+    }
+    
+    /* ============================================================================ */
+    /* SLIDERS - IMPROVED */
+    /* ============================================================================ */
     .stSlider {
-        margin-bottom: 0.5rem !important;
+        margin: 1rem 0 0.8rem 0 !important;
     }
     .stSlider > div > div > div > div {
-        font-size: 0.9rem !important;
+        font-size: 0.95rem !important;
         font-weight: 500 !important;
     }
     
-    /* Info and warning boxes - consistent padding */
+    /* ============================================================================ */
+    /* INFO/WARNING/ERROR/SUCCESS BOXES - MODERN CARDS */
+    /* ============================================================================ */
     .stInfo, 
     .stWarning, 
     .stError, 
     .stSuccess {
-        padding: 0.75rem 1rem !important; 
-        margin: 0.5rem 0 !important;
+        padding: 1rem 1.2rem !important; 
+        margin: 0.8rem 0 !important;
+        border-radius: 0.5rem !important;
+        border-left: 4px solid !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
+    }
+    
+    .stInfo {
+        border-left-color: #0066cc !important;
+        background-color: #f0f7ff !important;
+    }
+    
+    .stWarning {
+        border-left-color: #ff9800 !important;
+        background-color: #fff8f0 !important;
+    }
+    
+    .stError {
+        border-left-color: #d32f2f !important;
+        background-color: #ffebee !important;
+    }
+    
+    .stSuccess {
+        border-left-color: #388e3c !important;
+        background-color: #f1f8f4 !important;
+    }
+    
+    /* ============================================================================ */
+    /* EXPANDERS & CARDS */
+    /* ============================================================================ */
+    .streamlit-expanderHeader {
+        padding: 0.8rem 1rem !important; 
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        background-color: #f8f9fa !important;
         border-radius: 0.4rem !important;
     }
     
-    /* Card/expander styling - improved readability */
-    .streamlit-expanderHeader {
-        padding: 0.6rem 0.8rem !important; 
-        font-size: 1rem !important;
-        font-weight: 500 !important;
-    }
     .streamlit-expanderContent {
-        padding: 0.6rem 0.8rem !important;
+        padding: 1rem !important;
+        background-color: #ffffff !important;
     }
     
-    /* Table styling - slightly larger */
+    /* Container with border (used for cards) */
+    .stContainer {
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 0.5rem !important;
+        padding: 1rem !important;
+        background-color: #ffffff !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    
+    /* ============================================================================ */
+    /* TABLES & DATA */
+    /* ============================================================================ */
     .stDataFrame {
         font-size: 0.95rem !important;
+        border-radius: 0.4rem !important;
     }
     
-    /* Captions and small text */
+    /* ============================================================================ */
+    /* TEXT & LABELS */
+    /* ============================================================================ */
+    p {
+        margin: 0.5rem 0 !important; 
+        line-height: 1.6 !important;
+        font-size: 0.97rem !important;
+        color: #333333 !important;
+    }
+    
+    label {
+        margin-bottom: 0.4rem !important;
+        font-weight: 600 !important;
+        font-size: 0.97rem !important;
+        color: #222222 !important;
+    }
+    
     .stCaption {
         font-size: 0.9rem !important;
-        margin: 0.3rem 0 !important;
+        margin: 0.4rem 0 !important;
+        color: #666666 !important;
     }
     
-    /* Markdown text and labels - improved readability */
-    p {
-        margin: 0.4rem 0 !important; 
-        line-height: 1.5 !important;
-        font-size: 0.95rem !important;
-    }
-    label {
-        margin-bottom: 0.3rem !important;
-        font-weight: 500 !important;
-        font-size: 0.95rem !important;
-    }
-    
-    /* Radio buttons - consistent spacing */
+    /* ============================================================================ */
+    /* RADIO BUTTONS & CHECKBOXES */
+    /* ============================================================================ */
     .stRadio {
-        margin-bottom: 0.5rem !important;
+        margin-bottom: 1rem !important;
+        padding: 0.8rem !important;
+        background-color: #fafafa !important;
+        border-radius: 0.4rem !important;
+        border: 1px solid #e0e0e0 !important;
     }
+    
     .stRadio label {
-        font-size: 0.95rem !important;
+        font-size: 0.97rem !important;
+        font-weight: 500 !important;
     }
     
-    /* Column spacing - responsive */
+    /* ============================================================================ */
+    /* COLUMNS & RESPONSIVE LAYOUT */
+    /* ============================================================================ */
     [data-testid="column"] {
-        padding: 0 0.75rem !important;
-    }
-    
-    /* Plotly chart containers - responsive */
-    .js-plotly-plot {
-        margin: 0.5rem 0 !important;
-    }
-    
-    /* File uploader - consistent styling */
-    .stFileUploader {
-        margin-bottom: 0.5rem !important;
-    }
-    
-    /* Metric containers */
-    [data-testid="stMetricContainer"] {
         padding: 0.5rem !important;
     }
+    
+    /* ============================================================================ */
+    /* CHARTS & PLOTS */
+    /* ============================================================================ */
+    .js-plotly-plot {
+        margin: 0.8rem 0 !important;
+        border-radius: 0.4rem !important;
+        overflow: hidden;
+    }
+    
+    /* ============================================================================ */
+    /* FILE UPLOADER */
+    /* ============================================================================ */
+    .stFileUploader {
+        margin: 1rem 0 !important;
+    }
+    
+    /* ============================================================================ */
+    /* METRICS - MODERN CARDS */
+    /* ============================================================================ */
+    [data-testid="stMetricContainer"] {
+        padding: 1.2rem !important;
+        background-color: #f8f9fa !important;
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    
 </style>
 """, unsafe_allow_html=True)
 
@@ -768,159 +876,179 @@ if "basin_modified_dem" not in st.session_state:
 if "basin_volumes" not in st.session_state:
     st.session_state.basin_volumes = {"volume": 0, "inner_area": 0, "outer_area": 0}
 
-# Data Source selection
-st.markdown("**Data Source**")
-data_source = st.radio(
-    "",
-    ["Upload Files", "Use Data Folder (Data/dem.tif, profile.zip)"],
-    index=0 if st.session_state.data_source == "upload" else 1,
-    key="data_source_radio",
-    horizontal=True
-)
-st.session_state.data_source = "upload" if data_source == "Upload Files" else "folder"
+# Data Source and Design Mode Selection - Modern Card Layout
+st.markdown("## ⚙️ Project Setup")
 
-# Design Mode selection - no spacing between
-st.markdown("**Design Mode**")
-design_mode = st.radio(
-    "",
-    ["Profile Line (Berm/Ditch)", "Polygon Basin"],
-    index=0 if st.session_state.design_mode == "profile" else 1,
-    key="design_mode_radio",
-    horizontal=True
-)
-st.session_state.design_mode = "profile" if design_mode == "Profile Line (Berm/Ditch)" else "basin"
+col_ds, col_dm = st.columns(2, gap="large")
+
+with col_ds:
+    with st.container(border=True):
+        st.markdown("#### 📊 Data Source")
+        data_source = st.radio(
+            "",
+            ["Upload Files", "Use Data Folder"],
+            index=0 if st.session_state.data_source == "upload" else 1,
+            key="data_source_radio",
+            horizontal=False,
+            help="Choose where to load DEM and profile data from"
+        )
+        st.session_state.data_source = "upload" if data_source == "Upload Files" else "folder"
+        st.caption("Load from upload dialog or Data/ folder")
+
+with col_dm:
+    with st.container(border=True):
+        st.markdown("#### 🎯 Design Mode")
+        design_mode = st.radio(
+            "",
+            ["Profile Line (Berm/Ditch)", "Polygon Basin"],
+            index=0 if st.session_state.design_mode == "profile" else 1,
+            key="design_mode_radio",
+            horizontal=False,
+            help="Select design workflow"
+        )
+        st.session_state.design_mode = "profile" if design_mode == "Profile Line (Berm/Ditch)" else "basin"
+        st.caption("Design linear berms or basin polygons")
+
+st.markdown("---")
 
 # File upload section (only show if "Upload Files" is selected)
 uploaded_dem = None
 uploaded_profile = None
 
 if st.session_state.data_source == "upload":
-    # DEM Upload
-    st.markdown("**📁 Upload DEM**")
-    st.markdown("Upload DEM (GeoTIFF) " + "❓")
-    uploaded_dem = st.file_uploader(
-        "Drag and drop file here",
-        type=['tif', 'tiff'],
-        key="dem_uploader",
-        help="Limit 200MB per file • TIF, TIFF",
-        label_visibility="collapsed"
-    )
+    st.markdown("## 📁 Upload Data Files")
     
-    if uploaded_dem is not None:
-        # Process uploaded DEM
-        if uploaded_dem.size > 200 * 1024 * 1024:  # 200MB
-            st.error("File size exceeds 200MB limit")
-        else:
-            with st.spinner("Processing uploaded DEM..."):
-                ds, tmp_path = process_uploaded_dem(uploaded_dem)
-                if ds is not None:
-                    # Close previous dataset if exists
-                    if st.session_state.uploaded_dem_dataset is not None:
-                        try:
-                            st.session_state.uploaded_dem_dataset.close()
-                        except:
-                            pass
-                    st.session_state.uploaded_dem_dataset = ds
-                    st.session_state.uploaded_dem_path = tmp_path
-                    # Clear profile coordinates when new DEM is loaded (they may not match)
-                    st.session_state.uploaded_profile_coords = None
-                    st.session_state.uploaded_profile_crs = None
-                    st.session_state.profile_line_coords = None
-                    st.success(f"✅ DEM loaded successfully: {uploaded_dem.name}")
+    col_dem, col_prof = st.columns(2, gap="large")
     
-    # Profile Upload (Optional)
-    st.markdown("**📍 Upload Profile (Optional)**")
-    st.markdown("Upload Profile Line (Shapefile .zip or KML) " + "❓")
-    uploaded_profile = st.file_uploader(
-        "Drag and drop file here",
-        type=['zip', 'kml'],
-        key="profile_uploader",
-        help="Limit 200MB per file • ZIP, KML",
-        label_visibility="collapsed"
-    )
-    
-    if uploaded_profile is not None:
-        if uploaded_profile.size > 200 * 1024 * 1024:  # 200MB
-            st.error("File size exceeds 200MB limit")
-        else:
-            with st.spinner("Processing uploaded profile..."):
-                if uploaded_profile.name.lower().endswith('.zip'):
-                    coords = process_uploaded_shapefile(uploaded_profile)
-                elif uploaded_profile.name.lower().endswith('.kml'):
-                    coords = process_uploaded_kml(uploaded_profile)
+    with col_dem:
+        with st.container(border=True):
+            st.markdown("#### DEM (Digital Elevation Model)")
+            st.caption("GeoTIFF format required • Max 200MB")
+            uploaded_dem = st.file_uploader(
+                "Upload DEM",
+                type=['tif', 'tiff'],
+                key="dem_uploader",
+                help="Upload DEM as GeoTIFF",
+                label_visibility="collapsed"
+            )
+            
+            if uploaded_dem is not None:
+                # Process uploaded DEM
+                if uploaded_dem.size > 200 * 1024 * 1024:  # 200MB
+                    st.error("File size exceeds 200MB limit")
                 else:
-                    coords = None
-                
-                if coords:
-                    # Store coordinates and CRS info if available
-                    if isinstance(coords, tuple) and len(coords) == 2:
-                        # Shapefile with CRS info
-                        st.session_state.uploaded_profile_coords = coords[0]
-                        st.session_state.uploaded_profile_crs = coords[1]
-                    else:
-                        # KML (already in lat/lon) or shapefile without CRS
-                        st.session_state.uploaded_profile_coords = coords
-                        st.session_state.uploaded_profile_crs = None
-                    st.success(f"✅ Profile loaded successfully: {uploaded_profile.name}")
-                    # Mark that profile was just uploaded so it gets processed
-                    st.session_state.profile_just_uploaded = True
-                else:
-                    st.error("Failed to extract profile line from uploaded file")
+                    with st.spinner("Processing uploaded DEM..."):
+                        ds, tmp_path = process_uploaded_dem(uploaded_dem)
+                        if ds is not None:
+                            # Close previous dataset if exists
+                            if st.session_state.uploaded_dem_dataset is not None:
+                                try:
+                                    st.session_state.uploaded_dem_dataset.close()
+                                except:
+                                    pass
+                            st.session_state.uploaded_dem_dataset = ds
+                            st.session_state.uploaded_dem_path = tmp_path
+                            # Clear profile coordinates when new DEM is loaded (they may not match)
+                            st.session_state.uploaded_profile_coords = None
+                            st.session_state.uploaded_profile_crs = None
+                            st.session_state.profile_line_coords = None
+                            st.success(f"✅ {uploaded_dem.name}")
     
-    if uploaded_profile is None and st.session_state.uploaded_profile_coords is None:
-        st.warning("⚠️ Or draw manually on map after loading DEM")
+    with col_prof:
+        with st.container(border=True):
+            st.markdown("#### Profile Line (Optional)")
+            st.caption("Shapefile .zip or KML • Max 200MB")
+            uploaded_profile = st.file_uploader(
+                "Upload Profile",
+                type=['zip', 'kml'],
+                key="profile_uploader",
+                help="Upload profile as Shapefile or KML",
+                label_visibility="collapsed"
+            )
+            
+            if uploaded_profile is not None:
+                if uploaded_profile.size > 200 * 1024 * 1024:  # 200MB
+                    st.error("File size exceeds 200MB limit")
+                else:
+                    with st.spinner("Processing uploaded profile..."):
+                        if uploaded_profile.name.lower().endswith('.zip'):
+                            coords = process_uploaded_shapefile(uploaded_profile)
+                        elif uploaded_profile.name.lower().endswith('.kml'):
+                            coords = process_uploaded_kml(uploaded_profile)
+                        else:
+                            coords = None
+                        
+                        if coords:
+                            # Store coordinates and CRS info if available
+                            if isinstance(coords, tuple) and len(coords) == 2:
+                                # Shapefile with CRS info
+                                st.session_state.uploaded_profile_coords = coords[0]
+                                st.session_state.uploaded_profile_crs = coords[1]
+                            else:
+                                # KML (already in lat/lon) or shapefile without CRS
+                                st.session_state.uploaded_profile_coords = coords
+                                st.session_state.uploaded_profile_crs = None
+                            st.success(f"✅ {uploaded_profile.name}")
+                            # Mark that profile was just uploaded so it gets processed
+                            st.session_state.profile_just_uploaded = True
+                        else:
+                            st.error("Failed to extract profile from file")
+    
+    st.markdown("---")
     
     # Polygon Basin Upload (only in basin mode)
     if st.session_state.design_mode == "basin":
-        st.markdown("**🔷 Upload Basin Polygon (Optional)**")
-        st.markdown("Upload Polygon (Shapefile .zip or KML) " + "❓")
-        uploaded_polygon = st.file_uploader(
-            "Drag and drop file here",
-            type=['zip', 'kml'],
-            key="polygon_uploader",
-            help="Limit 200MB per file • ZIP, KML",
-            label_visibility="collapsed"
-        )
+        st.markdown("## 🔷 Upload Basin Polygon (Optional)")
         
-        if uploaded_polygon is not None:
-            if uploaded_polygon.size > 200 * 1024 * 1024:  # 200MB
-                st.error("File size exceeds 200MB limit")
-            else:
-                with st.spinner("Processing uploaded polygon..."):
-                    if uploaded_polygon.name.lower().endswith('.zip'):
-                        poly_result = process_uploaded_polygon_shapefile(uploaded_polygon)
-                    elif uploaded_polygon.name.lower().endswith('.kml'):
-                        poly_result = process_uploaded_polygon_kml(uploaded_polygon)
-                    else:
-                        poly_result = None
-                    
-                    if poly_result:
-                        # Store polygon coordinates and CRS info if available
-                        if isinstance(poly_result, tuple) and len(poly_result) == 2:
-                            # Shapefile with CRS info - attempt to convert to lat/lon (EPSG:4326)
-                            poly_coords, poly_crs = poly_result
-                            try:
-                                if poly_crs is not None and not CRS(poly_crs).is_geographic:
-                                    transformer_poly = Transformer.from_crs(poly_crs, "EPSG:4326", always_xy=True)
-                                    converted = []
-                                    for coord in poly_coords:
-                                        if isinstance(coord, (list, tuple)) and len(coord) >= 2:
-                                            x, y = coord[0], coord[1]
-                                            lon, lat = transformer_poly.transform(x, y)
-                                            converted.append([lon, lat])
-                                    if converted:
-                                        st.session_state.basin_polygon_coords = converted
+        with st.container(border=True):
+            st.caption("Shapefile .zip or KML • Max 200MB")
+            uploaded_polygon = st.file_uploader(
+                "Upload Polygon",
+                type=['zip', 'kml'],
+                key="polygon_uploader",
+                help="Upload polygon as Shapefile or KML",
+                label_visibility="collapsed"
+            )
+            
+            if uploaded_polygon is not None:
+                if uploaded_polygon.size > 200 * 1024 * 1024:  # 200MB
+                    st.error("File size exceeds 200MB limit")
+                else:
+                    with st.spinner("Processing uploaded polygon..."):
+                        if uploaded_polygon.name.lower().endswith('.zip'):
+                            poly_result = process_uploaded_polygon_shapefile(uploaded_polygon)
+                        elif uploaded_polygon.name.lower().endswith('.kml'):
+                            poly_result = process_uploaded_polygon_kml(uploaded_polygon)
+                        else:
+                            poly_result = None
+                        
+                        if poly_result:
+                            # Store polygon coordinates and CRS info if available
+                            if isinstance(poly_result, tuple) and len(poly_result) == 2:
+                                # Shapefile with CRS info - attempt to convert to lat/lon (EPSG:4326)
+                                poly_coords, poly_crs = poly_result
+                                try:
+                                    if poly_crs is not None and not CRS(poly_crs).is_geographic:
+                                        transformer_poly = Transformer.from_crs(poly_crs, "EPSG:4326", always_xy=True)
+                                        converted = []
+                                        for coord in poly_coords:
+                                            if isinstance(coord, (list, tuple)) and len(coord) >= 2:
+                                                x, y = coord[0], coord[1]
+                                                lon, lat = transformer_poly.transform(x, y)
+                                                converted.append([lon, lat])
+                                        if converted:
+                                            st.session_state.basin_polygon_coords = converted
+                                        else:
+                                            st.session_state.basin_polygon_coords = [[c[0], c[1]] if isinstance(c, (list, tuple)) else c for c in poly_coords]
                                     else:
+                                        # CRS is geographic or unknown - assume already lon/lat
                                         st.session_state.basin_polygon_coords = [[c[0], c[1]] if isinstance(c, (list, tuple)) else c for c in poly_coords]
-                                else:
-                                    # CRS is geographic or unknown - assume already lon/lat
+                                    st.session_state.basin_polygon_crs = poly_crs
+                                    st.success(f"✅ {uploaded_polygon.name}")
+                                except Exception as e:
+                                    # Fallback: store raw coords but warn user
                                     st.session_state.basin_polygon_coords = [[c[0], c[1]] if isinstance(c, (list, tuple)) else c for c in poly_coords]
-                                st.session_state.basin_polygon_crs = poly_crs
-                                st.success(f"✅ Basin polygon loaded: {uploaded_polygon.name} (CRS: {poly_crs})")
-                            except Exception as e:
-                                # Fallback: store raw coords but warn user
-                                st.session_state.basin_polygon_coords = [[c[0], c[1]] if isinstance(c, (list, tuple)) else c for c in poly_coords]
-                                st.session_state.basin_polygon_crs = poly_crs
+                                    st.session_state.basin_polygon_crs = poly_crs
                                 st.warning(f"Basin polygon loaded but coordinate transform to EPSG:4326 failed: {e}. Display may be incorrect.")
                         else:
                             # KML (already in lat/lon)
@@ -1888,8 +2016,8 @@ def calculate_basin_volume_tin(outer_coords_xy, depth, side_slope, longitudinal_
     
     This method:
     1. Uses the existing inner polygon calculation to ensure proper geometry
-    2. Generates 3D point cloud for outer polygon (Z=0)
-    3. Calculates inner ring points with variable depth Z = -Depth_local
+    2. Generates 3D point cloud for outer polygon at Z equals 0
+    3. Calculates inner ring points with variable depth where Z equals negative depth
     4. Constructs TIN mesh connecting top and bottom rings
     5. Calculates volume by summing signed volumes of triangular elements within the basin
     
@@ -2630,7 +2758,21 @@ if st.session_state.get("uploaded_profile_coords") is not None:
 # DEM INFO (after header already displayed at top)
 # ============================================================================
 
-st.caption(f"DEM: {src_dem.shape[0]}×{src_dem.shape[1]} | CRS: {str(analysis_crs).split(':')[-1]} | Resolution: {abs(analysis_transform.a):.2f}m")
+with st.container(border=True):
+    col_info1, col_info2, col_info3, col_info4 = st.columns(4)
+    with col_info1:
+        st.metric("Dimensions", f"{src_dem.shape[0]}×{src_dem.shape[1]}", label_visibility="collapsed")
+        st.caption("pixels")
+    with col_info2:
+        st.metric("CRS", str(analysis_crs).split(':')[-1], label_visibility="collapsed")
+        st.caption("coordinate system")
+    with col_info3:
+        st.metric("Resolution", f"{abs(analysis_transform.a):.2f}", label_visibility="collapsed")
+        st.caption("meters/pixel")
+    with col_info4:
+        area_km2 = (src_dem.shape[0] * src_dem.shape[1] * abs(analysis_transform.a)**2) / 1e6
+        st.metric("Area", f"{area_km2:.1f}", label_visibility="collapsed")
+        st.caption("km²")
 
 # ============================================================================
 # TABS
@@ -2648,22 +2790,34 @@ else:
 # ============================================================================
 
 with tab1:
-    col_map, col_ctrl = st.columns([5, 1])
+    st.markdown("## 🗺️ Input Data & Map Drawing")
+    
+    col_map, col_ctrl = st.columns([5, 1], gap="large")
     
     with col_ctrl:
-        st.markdown("### Controls")
-        sat_opacity = st.slider("Satellite", 0.0, 1.0, 1.0, 0.1, key="sat_map")
-        hs_opacity = st.slider("Hillshade", 0.0, 1.0, 0.85, 0.1, key="hs_map")
-        st.markdown("---")
-        existing_spacing = st.number_input("Existing Terrain Spacing (m)", 0.5, 50.0, 
-                                          st.session_state.existing_spacing, 0.5, key="existing_spacing_map",
-                                          help="Spacing for sampling existing terrain elevation")
-        st.session_state.existing_spacing = existing_spacing
-        st.markdown("---")
-        if st.session_state.design_mode == "profile":
-            st.info("**Draw profile line**\n\nStations created at each\ncorner vertex of polyline")
-        else:
-            st.info("**Draw basin polygon**\n\n1. Draw a closed polygon\n   (blue) for basin boundary\n\n2. Draw a channel line\n   (green) for flow path\n\nBoth tools are available\nin the map toolbar.")
+        with st.container(border=True):
+            st.markdown("#### 🎛️ Map Controls")
+            
+            st.markdown("**Layers**")
+            sat_opacity = st.slider("Satellite", 0.0, 1.0, 1.0, 0.1, key="sat_map", label_visibility="collapsed")
+            st.caption("Opacity: " + f"{int(sat_opacity * 100)}%")
+            
+            hs_opacity = st.slider("Hillshade", 0.0, 1.0, 0.85, 0.1, key="hs_map", label_visibility="collapsed")
+            st.caption("Opacity: " + f"{int(hs_opacity * 100)}%")
+            
+            st.markdown("---")
+            st.markdown("**Terrain Sampling**")
+            existing_spacing = st.number_input("Spacing (m)", 0.5, 50.0, 
+                                              st.session_state.existing_spacing, 0.5, key="existing_spacing_map",
+                                              help="Spacing for sampling existing terrain elevation")
+            st.session_state.existing_spacing = existing_spacing
+            
+            st.markdown("---")
+            st.markdown("**Drawing Instructions**")
+            if st.session_state.design_mode == "profile":
+                st.info("📍 Draw a polyline on the map\n\nStations create at each vertex")
+            else:
+                st.info("📍 **Polygon:** Draw boundary (blue)\n\n📍 **Channel:** Draw flow path (green)")
     
     with col_map:
         m = folium.Map(location=[center_lat, center_lon], zoom_start=14, prefer_canvas=True)
@@ -4618,46 +4772,48 @@ Perpendicular distance from profile centreline where terrain modification applie
     # Download profile line section
     if st.session_state.profile_line_coords is not None and len(st.session_state.profile_line_coords) >= 2:
         st.markdown("---")
-        st.markdown("#### 📥 Download Profile Line")
-        st.markdown("Export your drawn/uploaded profile line in different formats:")
-        col_dwn1, col_dwn2, col_dwn3 = st.columns(3)
-        with col_dwn1:
-            shp_data = export_line_to_shapefile(st.session_state.profile_line_coords)
-            if shp_data:
-                st.download_button(
-                    "📦 Shapefile (ZIP)",
-                    data=shp_data,
-                    file_name="profile_line.zip",
-                    mime="application/zip",
-                    use_container_width=True
-                )
-        with col_dwn2:
-            kml_data = export_line_to_kml(st.session_state.profile_line_coords)
-            if kml_data:
-                st.download_button(
-                    "📍 KML",
-                    data=kml_data,
-                    file_name="profile_line.kml",
-                    mime="application/vnd.google-earth.kml+xml",
-                    use_container_width=True
-                )
-        with col_dwn3:
-            geojson_data = export_line_to_geojson(st.session_state.profile_line_coords)
-            if geojson_data:
-                st.download_button(
-                    "📄 GeoJSON",
-                    data=geojson_data,
-                    file_name="profile_line.geojson",
-                    mime="application/json",
-                    use_container_width=True
-                )
+        st.markdown("### 📥 Export Profile Line")
+        with st.container(border=True):
+            st.caption("Download in multiple formats")
+            col_dwn1, col_dwn2, col_dwn3 = st.columns(3, gap="medium")
+            with col_dwn1:
+                shp_data = export_line_to_shapefile(st.session_state.profile_line_coords)
+                if shp_data:
+                    st.download_button(
+                        "📦 Shapefile",
+                        data=shp_data,
+                        file_name="profile_line.zip",
+                        mime="application/zip",
+                        use_container_width=True
+                    )
+            with col_dwn2:
+                kml_data = export_line_to_kml(st.session_state.profile_line_coords)
+                if kml_data:
+                    st.download_button(
+                        "📍 KML",
+                        data=kml_data,
+                        file_name="profile_line.kml",
+                        mime="application/vnd.google-earth.kml+xml",
+                        use_container_width=True
+                    )
+            with col_dwn3:
+                geojson_data = export_line_to_geojson(st.session_state.profile_line_coords)
+                if geojson_data:
+                    st.download_button(
+                        "📄 GeoJSON",
+                        data=geojson_data,
+                        file_name="profile_line.geojson",
+                        mime="application/json",
+                        use_container_width=True
+                    )
 
     # Download basin polygon section (if present)
     if st.session_state.basin_polygon_coords is not None and len(st.session_state.basin_polygon_coords) >= 3:
         st.markdown("---")
-        st.markdown("#### 📥 Download Basin Polygon")
-        st.markdown("Export your drawn/uploaded basin polygon in different formats:")
-        col_poly1, col_poly2, col_poly3 = st.columns(3)
+        st.markdown("### 📥 Export Basin Polygon")
+        with st.container(border=True):
+            st.caption("Download in multiple formats")
+            col_poly1, col_poly2, col_poly3 = st.columns(3, gap="medium")
         with col_poly1:
             shp_data = export_polygon_to_shapefile(st.session_state.basin_polygon_coords, st.session_state.basin_polygon_crs)
             if shp_data:
@@ -5545,7 +5701,7 @@ with _tab2:
 
 if st.session_state.design_mode == "basin":
     with tab4:
-        st.markdown("### 🏞️ Basin Design")
+        st.markdown("## 🏞️ Basin Design & Parameters")
         
         # Check if this is the first time visiting the Basin Design tab after polygon is set
         first_time_basin_design_tab = "basin_design_tab_visited" not in st.session_state
@@ -5555,67 +5711,92 @@ if st.session_state.design_mode == "basin":
         
         if basin_coords is None or len(basin_coords) < 3:
             st.warning("⚠️ Draw a polygon on the Input Data map to define the basin boundary.")
-            st.info("""
-            **How to use Basin Design:**
-            1. Go to the **Input Data** tab
+            with st.container(border=True):
+                st.markdown("**Getting Started:**")
+                st.markdown("""
+                1. Go to the **Input Data** tab
+                2. Draw a polygon using the blue polygon tool
+                3. Optionally draw a green polyline for flow path
+                4. Return here to configure parameters
+                """)
             2. Use the polygon draw tool on the map to draw your basin boundary
             3. Come back to this tab to configure basin parameters
             4. The basin will be cut into the terrain with sloped sides
             """)
         else:
-            st.success(f"✅ Basin polygon defined with {len(basin_coords)} vertices")
+            st.success(f"✅ Basin polygon with {len(basin_coords)} vertices")
             
-            # Basin parameters
             st.markdown("---")
-            st.markdown("#### Basin Parameters")
+            st.markdown("### Basin Configuration")
             
-            col_bp1, col_bp2, col_bp3 = st.columns(3)
+            # Basin parameters in organized cards
+            st.markdown("#### ⚙️ Basin Parameters")
+            
+            col_bp1, col_bp2, col_bp3 = st.columns(3, gap="large")
+            
             with col_bp1:
-                basin_depth = st.number_input(
-                    "Basin Depth (m)", 
-                    0.5, 60.0, 
-                    st.session_state.basin_depth, 
-                    0.5,
-                    key="basin_depth_input",
-                    help="Depth of the basin from existing ground surface (at upstream end)"
-                )
-                st.session_state.basin_depth = basin_depth
+                with st.container(border=True):
+                    st.markdown("**Depth**")
+                    basin_depth = st.number_input(
+                        "Basin Depth (m)", 
+                        0.5, 60.0, 
+                        st.session_state.basin_depth, 
+                        0.5,
+                        key="basin_depth_input",
+                        help="Depth from existing ground surface",
+                        label_visibility="collapsed"
+                    )
+                    st.session_state.basin_depth = basin_depth
+                    st.caption(f"📏 {basin_depth:.1f}m")
             
             with col_bp2:
-                basin_side_slope = st.number_input(
-                    "Side Slope (H:1V)", 
-                    0.5, 10.0, 
-                    st.session_state.basin_side_slope, 
-                    0.1,
-                    key="basin_slope_input",
-                    help="Horizontal to vertical ratio (e.g., 1.5 means 1.5m horizontal for every 1m vertical)"
-                )
-                st.session_state.basin_side_slope = basin_side_slope
+                with st.container(border=True):
+                    st.markdown("**Side Slope**")
+                    basin_side_slope = st.number_input(
+                        "Side Slope (H:1V)", 
+                        0.5, 10.0, 
+                        st.session_state.basin_side_slope, 
+                        0.1,
+                        key="basin_slope_input",
+                        help="Horizontal : Vertical ratio",
+                        label_visibility="collapsed"
+                    )
+                    st.session_state.basin_side_slope = basin_side_slope
+                    st.caption(f"📐 {basin_side_slope:.2f}:1")
             
             with col_bp3:
-                basin_longitudinal_slope = st.number_input(
-                    "Longitudinal Slope (%)", 
-                    -200.0, 200.0, 
-                    st.session_state.basin_longitudinal_slope, 
-                    0.1,
-                    key="basin_long_slope_input",
-                    help="Slope along basin from upstream to downstream (positive = downstream deeper, negative = upstream deeper). If channel is drawn, slope follows channel path. Otherwise, uses first vertex to minimum elevation point."
-                )
-                st.session_state.basin_longitudinal_slope = basin_longitudinal_slope
+                with st.container(border=True):
+                    st.markdown("**Longitudinal Slope**")
+                    basin_longitudinal_slope = st.number_input(
+                        "Longitudinal Slope (%)", 
+                        -200.0, 200.0, 
+                        st.session_state.basin_longitudinal_slope, 
+                        0.1,
+                        key="basin_long_slope_input",
+                        help="Slope from upstream to downstream",
+                        label_visibility="collapsed"
+                    )
+                    st.session_state.basin_longitudinal_slope = basin_longitudinal_slope
+                    st.caption(f"📈 {basin_longitudinal_slope:+.1f}%")
             
-            # Force rerun whenever any parameter changes (Streamlit automatically reruns, but ensure metrics update)
+            # Force rerun whenever any parameter changes
             st.session_state.basin_params_changed = True
             
             # Channel definition section
             st.markdown("---")
-            st.markdown("#### Channel Definition (Optional)")
-            st.info("💡 **Draw a channel line** on the Input Data map (green polyline tool) to define the flow path where longitudinal slope is applied. The channel should go from upstream to downstream inside the basin. If no channel is drawn, the system will automatically use the first polygon vertex to the minimum elevation point.")
+            st.markdown("#### 🌊 Channel Definition (Optional)")
             
-            channel_coords = st.session_state.get("basin_channel_coords")
-            if channel_coords is not None and len(channel_coords) >= 2:
-                st.success(f"✅ Channel defined with {len(channel_coords)} points")
-            else:
-                st.warning("⚠️ No channel defined. Using automatic flow direction (first vertex → minimum elevation).")
+            with st.container(border=True):
+                st.markdown("""
+                **Draw a polyline on the Input Data map (green tool)** to define the flow path.
+                The slope follows this channel from upstream to downstream.
+                """)
+                
+                channel_coords = st.session_state.get("basin_channel_coords")
+                if channel_coords is not None and len(channel_coords) >= 2:
+                    st.success(f"✅ Channel with {len(channel_coords)} points")
+                else:
+                    st.warning("⚠️ No channel defined. Using automatic flow direction (first vertex → minimum elevation).")
             
             # Convert basin polygon to projected coordinates
             basin_coords_xy = []
@@ -5800,25 +5981,34 @@ if st.session_state.design_mode == "basin":
             
             # Display metrics
             st.markdown("---")
-            st.markdown("#### Basin Metrics")
+            st.markdown("### 📊 Basin Metrics")
             
-            col_m1, col_m2, col_m3 = st.columns(3)
+            col_m1, col_m2, col_m3 = st.columns(3, gap="large")
             with col_m1:
-                st.metric("Geometric Volume", f"{volume:,.0f} m³")
+                with st.container(border=True):
+                    st.markdown("**Geometric Volume**")
+                    st.metric("", f"{volume:,.0f}", label_visibility="collapsed")
+                    st.caption("m³")
             with col_m2:
-                st.metric("Outer Area (Top)", f"{outer_area:,.0f} m²")
+                with st.container(border=True):
+                    st.markdown("**Outer Area (Top)**")
+                    st.metric("", f"{outer_area:,.0f}", label_visibility="collapsed")
+                    st.caption("m²")
             with col_m3:
-                if inner_area > 0:
-                    st.metric("Inner Area (Bottom)", f"{inner_area:,.0f} m²")
-                else:
-                    st.metric("Inner Area (Bottom)", "Point/N/A")
+                with st.container(border=True):
+                    st.markdown("**Inner Area (Bottom)**")
+                    if inner_area > 0:
+                        st.metric("", f"{inner_area:,.0f}", label_visibility="collapsed")
+                        st.caption("m²")
+                    else:
+                        st.metric("", "N/A", label_visibility="collapsed")
             
             # Volume Calculation Methods - Three Column Layout
             st.markdown("---")
-            st.markdown("#### Volume Calculation Methods")
-            st.caption("Three independent methods to calculate basin volume. Each method uses different computational approaches.")
+            st.markdown("### 🔢 Volume Calculation Methods")
+            st.caption("Three independent methods • Select and compare results")
             
-            col_vol1, col_vol2, col_vol3 = st.columns(3)
+            col_vol1, col_vol2, col_vol3 = st.columns(3, gap="medium")
             
             # METHOD 1: Geometric Volume (Auto-calculated)
             with col_vol1:
@@ -5894,7 +6084,7 @@ if st.session_state.design_mode == "basin":
                         st.markdown("""
                         **Method:** Triangulated Irregular Network (TIN)
                         
-                        Creates a 3D mesh connecting top surface (Z=0) and bottom surface (Z=-depth_local).
+                        Creates a 3D mesh connecting top surface at Z equals 0 and bottom surface at Z equals negative depth.
                         Sums signed volumes of triangular elements.
                         
                         **Uses:**
@@ -6564,30 +6754,29 @@ if st.session_state.design_mode == "profile" and 'samples' in locals():
     st.markdown("---")
     st.markdown("## 📥 Export Modified Terrain")
     
-    col_d1, col_d2, col_d3 = st.columns([1, 2, 1])
-    
-    with col_d2:
-        st.markdown("### Export Settings")
+    with st.container(border=True):
+        st.markdown("### ⚙️ Export Settings")
         
-        col_res1, col_res2 = st.columns(2)
+        col_res1, col_res2 = st.columns(2, gap="large")
         with col_res1:
             current_res = abs(src_transform.a)
             target_resolution = st.number_input(
                 "Target Resolution (m)", 
                 0.1, 100.0, float(current_res), 0.1,
-                help=f"Current DEM resolution: {current_res:.2f}m"
+                help=f"Current DEM resolution: {current_res:.2f}m",
+                label_visibility="collapsed"
             )
+            st.caption(f"Current: {current_res:.2f}m")
         with col_res2:
-            st.metric("Current Resolution", f"{current_res:.2f} m")
-            st.caption("Enter desired output resolution")
-        # Resampling method for export
-        resample_method = st.selectbox(
-            "Resampling Method",
-            options=["Bilinear", "Nearest", "IDW"],
-            index=0,
-            key="export_resample_method",
-            help="Choose method to resample modified DEM to target resolution"
-        )
+            resample_method = st.selectbox(
+                "Resampling Method",
+                options=["Bilinear", "Nearest", "IDW"],
+                index=0,
+                key="export_resample_method",
+                help="Choose method to resample modified DEM",
+                label_visibility="collapsed"
+            )
+            st.caption("Choose interpolation method")
         
         # Auto-recompute if parameters changed, or compute when button clicked
         should_compute = st.button("🔄 Compute Modified DEM", type="primary", use_container_width=True)
@@ -6622,14 +6811,21 @@ if st.session_state.design_mode == "profile" and 'samples' in locals():
             st.success("✅ Modified DEM computed!")
             
             # Show volume metrics
-            col_vol1, col_vol2, col_vol3 = st.columns(3)
+            st.markdown("**Cut/Fill Volumes**")
+            col_vol1, col_vol2, col_vol3 = st.columns(3, gap="medium")
             with col_vol1:
-                st.metric("Cut", f"{st.session_state.volumes.get('cut', 0):,.0f} m³")
+                with st.container(border=True):
+                    st.metric("Cut", f"{st.session_state.volumes.get('cut', 0):,.0f}", label_visibility="collapsed")
+                    st.caption("m³ excavated")
             with col_vol2:
-                st.metric("Fill", f"{st.session_state.volumes.get('fill', 0):,.0f} m³")
+                with st.container(border=True):
+                    st.metric("Fill", f"{st.session_state.volumes.get('fill', 0):,.0f}", label_visibility="collapsed")
+                    st.caption("m³ placed")
             with col_vol3:
-                net = st.session_state.volumes.get('fill', 0) - st.session_state.volumes.get('cut', 0)
-                st.metric("Net", f"{net:+,.0f} m³")
+                with st.container(border=True):
+                    net = st.session_state.volumes.get('fill', 0) - st.session_state.volumes.get('cut', 0)
+                    st.metric("Net", f"{net:+,.0f}", label_visibility="collapsed")
+                    st.caption("m³ balance")
             
             st.markdown("---")
             
