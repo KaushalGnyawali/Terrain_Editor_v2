@@ -9,4 +9,3 @@ plotly
 pyproj
 geopandas
 fiona
-lxml

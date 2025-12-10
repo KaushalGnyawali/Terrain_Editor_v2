@@ -2,21 +2,25 @@
 
 ## 🚀 SETUP
 
-```bash
-# Install dependencies
-pip install streamlit rasterio numpy pandas folium streamlit-folium shapely plotly pyproj
+### Install Dependencies
 
-# Run the application
-streamlit run terrain_editor.py
-```
-
-## Installation
-
-Install all required dependencies with:
-
+**Option 1: Using requirements.txt (Recommended)**
 ```bash
 pip install -r requirements.txt
 ```
+
+**Option 2: Manual Installation**
+```bash
+pip install streamlit rasterio numpy pandas folium streamlit-folium shapely plotly pyproj geopandas fiona
+```
+
+### Run the Application
+
+```bash
+streamlit run terrain_editor.py
+```
+
+The application will open in your default web browser at `http://localhost:8501`
 
 ## 📁 FOLDER STRUCTURE
 
@@ -51,9 +55,15 @@ your_project/
 ✏️ **Draw basin polygon on the map**
 - Click the polygon tool (⬟)
 - Draw a closed polygon for the basin boundary
-- Optionally draw a channel line (green polyline) for flow path
+- Map auto-zooms to polygon extent after drawing
 
-✅ **Result**: Profile line or basin polygon on map
+✏️ **Draw channel line (optional)**
+- Click the polyline tool (green)
+- Draw from upstream to downstream inside the basin
+- Channel line stays visible on first draw (no app reset)
+- S0 (upstream) and S1 (downstream) markers appear automatically
+
+✅ **Result**: Profile line or basin polygon on map with S0/S1 markers (if channel drawn)
 
 ---
 
@@ -173,23 +183,36 @@ V.E.: 2.5×
 
 📊 **Basin Metrics Display**
 ```
-Excavation Volume: 4,934 m³
+Geometric Volume: 4,934 m³
 Outer Area (Top): 1,853 m²
 Inner Area (Bottom): 328 m²
+
+DEM Difference Volume: 4,856 ± 124 m³
+Range: [4,623, 5,089] m³
 ```
+
+**Volume Calculation Methods:**
+- **Geometric Volume**: Calculated from designed ditch geometry using geometric formulas
+- **DEM Difference Volume**: Calculated by differencing original and modified DEMs, with uncertainty analysis across cell sizes (0.5-5 m)
 
 📈 **Longitudinal Profile Plot**
 - Shows existing ground and basin bottom elevation
-- Upstream and downstream markers
+- Upstream (S0) and downstream (S1) markers
 - Updates automatically with longitudinal slope
 
 🗺️ **Basin Plan View Map**
 - Outer polygon (red) - basin boundary
 - Inner polygon (blue) - basin bottom projection
 - Channel line (green) - flow path (if drawn)
-- Auto-zoomed to basin extent
+- S0 and S1 station markers (yellow with black borders)
+- Auto-zoomed to polygon outer boundary extent
 
-✅ **Result**: Complete basin design visualization
+🔄 **Apply Basin to Terrain**
+- Click "Compute Basin Cut" to generate modified DEM
+- Automatically calculates DEM-based volume with uncertainty analysis
+- Export modified DEM at custom resolution
+
+✅ **Result**: Complete basin design visualization with accurate volume estimates
 
 ---
 
@@ -257,20 +280,29 @@ Current: 1.0 m              ← Original resolution
 
 **Step-by-Step:**
 1. **Design Mode**: Select "Polygon Basin"
-2. **Input Data**: Draw basin polygon boundary
+2. **Input Data**: 
+   - Draw basin polygon boundary (map auto-zooms to polygon)
+   - Optionally draw channel line (green polyline) - S0/S1 markers appear automatically
 3. **Basin Design Setup**:
    ```
    Basin Depth: 3.0m
    Side Slope: 1.5 H:1V
    Longitudinal Slope: 2.0%
    ```
-4. **Optional**: Draw channel line for flow path
-5. **Review Metrics**: Check volume and areas
-6. **View Profile**: Verify longitudinal profile
-7. **Export**: Download modified DEM at custom resolution
+4. **Review Metrics**: 
+   - Geometric Volume: 4,934 m³
+   - DEM Difference Volume: 4,856 ± 124 m³ (after computing basin cut)
+   - Outer/Inner areas displayed
+5. **Compute Basin Cut**: Click "Compute Basin Cut" button
+   - Generates modified DEM
+   - Calculates DEM-based volume with uncertainty analysis
+   - Shows volume with mean ± std dev and [min, max] range
+6. **View Profile**: Verify longitudinal profile with S0/S1 markers
+7. **View Map**: Basin Plan View shows polygon, channel, and S0/S1 stations
+8. **Export**: Download modified DEM at custom resolution
 
-**Time**: ~3 minutes  
-**Result**: Complete basin design with accurate volume calculations
+**Time**: ~5 minutes  
+**Result**: Complete basin design with accurate volume calculations (geometric and DEM-based with uncertainty)
 
 ---
 
@@ -319,8 +351,14 @@ Current: 1.0 m              ← Original resolution
 ### Basin Design
 - Longitudinal slope: Positive = downstream deeper, negative = upstream deeper
 - Channel line: Optional - defines exact flow path for slope application
-- Volume calculation: Automatically accounts for longitudinal slope variation
+  - Channel persists after first draw (no app reset)
+  - S0 (upstream) and S1 (downstream) markers shown on both Input Data and Basin Design maps
+- Volume calculation: 
+  - Geometric volume: From designed geometry formulas
+  - DEM difference volume: From raster elevation subtraction with uncertainty analysis
+  - Uncertainty reported as mean ± std dev with [min, max] range across cell sizes (0.5-5 m)
 - Inner area: Updates based on average depth considering longitudinal slope
+- Map auto-zoom: Basin Plan View automatically zooms to polygon outer boundary
 
 ---
 
@@ -366,6 +404,10 @@ Current: 1.0 m              ← Original resolution
 - **Swale**: Sunken drainage channel
 - **Basin**: Polygon-based debris storage basin with varying depth
 
+### Volume Calculation Methods (Basin Mode)
+- **Geometric Volume**: Calculated using geometric formulas based on basin parameters (outer polygon area, inner polygon area, depth, and slopes). Assumes perfect geometric shapes.
+- **DEM Difference Volume**: Calculated by differencing original and modified DEMs, clipping both to basin polygon, and summing positive differences (excavation) × cell area. Includes uncertainty analysis across cell sizes (0.5-5 m). Reported as mean ± standard deviation with [min, max] range.
+
 ### Operation Mode
 - **Cut+Fill**: Both operations
 - **Fill Only**: Only raise terrain
@@ -391,4 +433,11 @@ Check CHANGES_v7.0.md for technical details
 **STATUS**: Production Ready v8.0  
 **DATE**: December 2025  
 **READY**: For geotechnical research and professional use  
-**FEATURES**: Profile Line Design | Polygon Basin Design | Longitudinal Slope | Channel Flow Path
+**FEATURES**: 
+- Profile Line Design (Berm/Ditch/Swale)
+- Polygon Basin Design with dual volume calculation methods
+- DEM-based volume with uncertainty analysis (cell-size sensitivity)
+- Longitudinal Slope support
+- Channel Flow Path with S0/S1 station markers
+- Improved UI with modern styling and responsive layout
+- Auto-zoom functionality for maps

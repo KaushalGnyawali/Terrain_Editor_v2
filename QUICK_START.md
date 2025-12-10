@@ -4,6 +4,12 @@
 
 ### Install Dependencies
 
+**Option 1: Using requirements.txt (Recommended)**
+```bash
+pip install -r requirements.txt
+```
+
+**Option 2: Manual Installation**
 ```bash
 pip install streamlit rasterio numpy pandas folium streamlit-folium shapely plotly pyproj geopandas fiona
 ```
@@ -56,8 +62,10 @@ your_project/
 - Draw profile line on map using polyline tool
 
 **Basin Mode:**
-- Draw basin polygon on map using polygon tool
-- Optionally draw channel line using polyline tool
+- Draw basin polygon on map using polygon tool (map auto-zooms to polygon)
+- Optionally draw channel line using green polyline tool
+  - Channel line persists after first draw
+  - S0 (upstream) and S1 (downstream) markers appear automatically
 
 ### 4. Configure Parameters
 
@@ -71,6 +79,8 @@ your_project/
 - Set basin depth (default: 3.0m)
 - Set side slope (default: 1.5 H:1V)
 - Set longitudinal slope (default: 0.0%)
+- Click "Compute Basin Cut" to generate modified DEM and calculate volumes
+- Review both geometric and DEM-difference volumes with uncertainty analysis
 
 ### 5. Review & Export
 
@@ -95,12 +105,17 @@ your_project/
 
 ### Basin Mode
 - ✅ Polygon-based basin design
-- ✅ Optional channel line for flow path
+- ✅ Optional channel line for flow path (persists on first draw)
+- ✅ S0 and S1 station markers on Input Data and Basin Design maps
 - ✅ Longitudinal slope support (-50% to +50%)
-- ✅ Accurate volume calculation (accounts for slope)
+- ✅ Dual volume calculation methods:
+  - Geometric volume (from design geometry)
+  - DEM difference volume (from raster subtraction with uncertainty analysis)
+- ✅ Volume uncertainty reporting (mean ± std dev, [min, max] range)
 - ✅ Inner/outer area calculation
 - ✅ Basin longitudinal profile plot
-- ✅ Basin plan view map
+- ✅ Basin plan view map (auto-zoomed to polygon extent)
+- ✅ Apply Basin to Terrain workflow
 
 ---
 
@@ -127,9 +142,10 @@ your_project/
 - Use polygon tool to draw closed polygon
 
 ### Channel line disappears (Basin Mode)
-- Channel should persist after drawing
+- Channel should persist after first draw (no app reset)
 - Check that you're in Basin Mode
-- Try refreshing the page
+- S0 and S1 markers should appear automatically when channel is drawn
+- Channel line is displayed in green on both Input Data and Basin Design maps
 
 ---
 
@@ -155,5 +171,6 @@ git checkout main
 
 **VERSION**: 8.0  
 **STATUS**: ✅ Production Ready  
-**LAST UPDATED**: December 2025
+**LAST UPDATED**: December 2025  
+**NEW FEATURES**: DEM-based volume calculation with uncertainty analysis, improved UI styling, S0/S1 station markers, auto-zoom functionality
 
