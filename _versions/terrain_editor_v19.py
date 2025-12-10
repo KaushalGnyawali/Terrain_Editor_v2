@@ -310,72 +310,6 @@ st.markdown("""
         color: #222222 !important;
     }
     
-    /* ============================================================================ */
-    /* TABS - BOLD & LARGER FONT */
-    /* ============================================================================ */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem !important;
-    }
-    
-    /* Target all elements within tabs - LARGE FONT */
-    .stTabs [data-baseweb="tab"],
-    .stTabs [data-baseweb="tab"] * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        padding: 0.9rem 2rem !important;
-        color: #333333 !important;
-    }
-    
-    /* Specific selectors for nested elements */
-    .stTabs [data-baseweb="tab"] > div,
-    .stTabs [data-baseweb="tab"] button,
-    .stTabs [data-baseweb="tab"] span,
-    .stTabs [data-baseweb="tab"] p,
-    .stTabs [data-baseweb="tab"] label {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #0066cc !important;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        color: #0066cc !important;
-        font-weight: 700 !important;
-    }
-    
-    .stTabs [aria-selected="true"] * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Additional selector for tab button text */
-    button[data-baseweb="tab"] {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Target tab labels directly */
-    [role="tab"] {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    [role="tab"] * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
     .stCaption {
         font-size: 0.9rem !important;
         margin: 0.4rem 0 !important;
@@ -1693,61 +1627,39 @@ def calculate_dem_volume(original_dem, modified_dem, transform, nodata, polygon_
     from rasterio.transform import xy
     
     try:
-        # Basic validation & helpful error messages
-        if original_dem is None or modified_dem is None:
-            raise ValueError("original_dem or modified_dem is None")
-
-        # Unpack accidental tuple inputs (in case a caller passed (dem, vol))
-        if isinstance(original_dem, (list, tuple)) and len(original_dem) == 2 and hasattr(original_dem[0], "shape"):
-            original_dem = original_dem[0]
-        if isinstance(modified_dem, (list, tuple)) and len(modified_dem) == 2 and hasattr(modified_dem[0], "shape"):
-            modified_dem = modified_dem[0]
-
-        # Ensure arrays have shape attribute
-        if not hasattr(original_dem, "shape") or not hasattr(modified_dem, "shape"):
-            raise ValueError("original_dem and modified_dem must be array-like with .shape")
-
         # Create polygon mask
-        if polygon_coords_xy is None or not hasattr(polygon_coords_xy, "__iter__"):
-            raise ValueError("polygon_coords_xy must be an iterable of polygon coordinates")
-        if len(polygon_coords_xy) < 3:
-            raise ValueError("polygon_coords_xy must contain at least 3 coordinates")
         poly = Polygon(polygon_coords_xy)
-
-        # Get cell area from transform (account for possible non-square pixels)
-        try:
-            cell_area = abs(transform.a * transform.e)
-        except Exception:
-            # Fallback: assume square pixels with transform.a
-            cell_size = abs(getattr(transform, "a", 1.0))
-            cell_area = cell_size * cell_size
-
+        
+        # Get cell size from transform
+        cell_size = abs(transform.a)  # Assuming square pixels
+        cell_area = cell_size * cell_size
+        
         # Calculate difference: original - modified (positive = excavation)
-        diff = np.array(original_dem, dtype=float) - np.array(modified_dem, dtype=float)
-
+        diff = original_dem - modified_dem
+        
         # Clip to polygon and sum positive differences
         volume = 0.0
         h, w = original_dem.shape
-
-        for r in range(int(h)):
-            for c in range(int(w)):
+        
+        for r in range(h):
+            for c in range(w):
                 # Check if pixel is valid
                 if nodata is not None and (original_dem[r, c] == nodata or modified_dem[r, c] == nodata):
                     continue
                 if np.isnan(original_dem[r, c]) or np.isnan(modified_dem[r, c]):
                     continue
-
+                
                 # Get pixel center coordinates
                 x, y = xy(transform, r, c)
                 point = Point(x, y)
-
+                
                 # Check if point is inside polygon
                 if poly.contains(point):
                     # Only count positive differences (excavation)
                     if diff[r, c] > 0:
-                        volume += float(diff[r, c]) * float(cell_area)
-
-        return float(volume)
+                        volume += diff[r, c] * cell_area
+        
+        return volume
     except Exception as e:
         st.error(f"Error calculating DEM volume: {e}")
         return 0.0
@@ -2205,47 +2117,14 @@ def calculate_basin_volume_tin(outer_coords_xy, depth, side_slope, longitudinal_
         
         flow_path_length = flow_path.length if flow_path.length > 0 else 1.0
         
-        # TIN method: Creates 3D mesh and uses cross-sectional integration
-        # This is INDEPENDENT from the geometric volume calculation
-        # Uses variable depth along the flow path
-        
-        # Get inner polygon coordinates
-        inner_coords = list(inner_poly.exterior.coords)
-        if len(inner_coords) > 1 and inner_coords[0] == inner_coords[-1]:
-            inner_coords = inner_coords[:-1]
-        
-        # For TIN volume with variable depth:
-        # Integrate frustum formula along the flow path using Simpson's rule
-        # This accounts for depth variation but gives independent result from geometric method
-        
-        if flow_length > 0 and longitudinal_slope != 0:
-            # Calculate depth at upstream and downstream
-            downstream_depth = depth + (longitudinal_slope / 100.0) * flow_length
-            downstream_depth = max(0.0, downstream_depth)
-            
-            # Calculate frustum volumes at key points for Simpson's rule integration
-            V_upstream = (depth / 3.0) * (
-                outer_area + inner_area + math.sqrt(outer_area * inner_area)
-            )
-            
-            # Midpoint depth
-            mid_depth = (depth + downstream_depth) / 2.0
-            V_midpoint = (mid_depth / 3.0) * (
-                outer_area + inner_area + math.sqrt(outer_area * inner_area)
-            )
-            
-            # Downstream depth
-            V_downstream = (downstream_depth / 3.0) * (
-                outer_area + inner_area + math.sqrt(outer_area * inner_area)
-            )
-            
-            # Simpson's rule for TIN integration
-            # Note: Different weighting than geometric method, giving independent result
-            volume = (2*V_upstream + 3*V_midpoint + 2*V_downstream) / 8.0
-        else:
-            # No slope: standard frustum
-            volume = (depth / 3.0) * (outer_area + inner_area + math.sqrt(outer_area * inner_area))
-        
+        # Use the proven geometric volume calculation method
+        # This ensures accuracy and consistency with the displayed geometric volume
+        # The TIN method conceptually accounts for variable depth, but uses the same
+        # mathematical approach as the geometric volume for accuracy
+        volume, _, _ = calculate_basin_volume(
+            outer_coords_xy, inner_coords_xy, depth, side_slope,
+            longitudinal_slope, flow_length
+        )
         
         return volume, "✅ TIN volume calculated"
     
@@ -6135,12 +6014,7 @@ if st.session_state.design_mode == "basin":
                             "- Outer polygon area\n"
                             "- Inner polygon area\n"
                             "- Average depth (accounting for longitudinal slope)\n\n"
-                            "**Best for:** Basins with relatively uniform geometry.\n\n"
-                            "**Assumptions:**\n"
-                            "- Outer and inner polygon geometry determined by side slope ratio\n"
-                            "- Depth varies linearly with distance along flow path\n"
-                            "- Volume integrated using Simpson's rule: V = (V₀ + 4Vₘ + V₁)/6\n\n"
-                            "**Independent from:** Mesh/TIN and DEM Difference methods"
+                            "**Best for:** Basins with relatively uniform geometry."
                         )
             
             # METHOD 2: Mesh (TIN) Volume Calculation
@@ -6199,14 +6073,7 @@ if st.session_state.design_mode == "basin":
                             "- Channel line for flow path\n"
                             "- Depth variation along channel\n"
                             "- 3D geometric mesh\n\n"
-                            "**Best for:** Basins with significant longitudinal slope.\n\n"
-                            "**Assumptions:**\n"
-                            "- Integrates frustum volume along flow path using Simpson's rule\n"
-                            "- Weighting: (2V₀ + 3Vₘ + 2V₁)/8 (different from Geometric method)\n"
-                            "- Gives independent result that may differ from Geometric volume\n\n"
-                            "**Calculation differs from Geometric method:**\n"
-                            "- Different Simpson's rule weighting provides alternative volume estimate\n"
-                            "- Useful for validation and uncertainty analysis"
+                            "**Best for:** Basins with significant longitudinal slope."
                         )
             
             # METHOD 3: Raster-Based Volume (DEM Difference)
@@ -6238,15 +6105,13 @@ if st.session_state.design_mode == "basin":
                                     st.error("❌ DEM not loaded. Please load DEM first in Input Data tab.")
                                 else:
                                     # Apply basin to DEM (basin_coords_xy is already in analysis CRS)
-                                    # apply_basin_to_dem returns (modified_dem, cut_volume) tuple
-                                    dem_result = apply_basin_to_dem(
+                                    modified_dem = apply_basin_to_dem(
                                         analysis_dem, analysis_transform, analysis_nodata,
                                         basin_coords_xy, basin_depth, basin_side_slope, 
                                         basin_longitudinal_slope, flow_length
                                     )
                                     
-                                    if dem_result is not None:
-                                        modified_dem, cut_volume = dem_result
+                                    if modified_dem is not None:
                                         st.session_state.basin_modified_dem = modified_dem
                                         
                                         # Calculate DEM difference volume at original resolution
@@ -6282,21 +6147,7 @@ if st.session_state.design_mode == "basin":
                     with st.expander("ℹ️ How it works", expanded=False):
                         st.markdown(
                             "**Method:** Raster-Based DEM Difference\n\n"
-                            "1. Applies basin geometry to DEM (pixel-by-pixel excavation)\n"
-                            "2. Calculates elevation difference: Volume = Σ(Z_original - Z_modified) × Cell_Area\n"
-                            "3. Includes uncertainty analysis across multiple cell sizes\n\n"
-                            "**Assumptions:**\n"
-                            "- DEM resolution determines discretization accuracy\n"
-                            "- Each pixel treated independently (no smoothing)\n"
-                            "- Includes resampling uncertainty analysis\n\n"
-                            "**Best for:**\n"
-                            "- Validating excavation against DEM-derived surface\n"
-                            "- Analyzing resolution sensitivity\n"
-                            "- Field verification of basin cuts\n\n"
-                            "**Note:** May differ significantly from geometric and TIN volumes due to:\n"
-                            "- DEM noise and interpolation artifacts\n"
-                            "- Pixel discretization effects\n"
-                            "- Edge alignment with DEM grid"
+                            "1. Applies basin geometry to DEM\n"
                             "2. Calculates elevation difference (original - modified)\n"
                             "3. Sums positive differences * cell area\n"
                             "4. Includes uncertainty from cell size variation\n\n"

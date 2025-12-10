@@ -1,6 +1,10 @@
-# -*- coding: utf-8 -*-
-# Terrain Editor Pro v8.0
-# Production-ready Streamlit application
+﻿
+# ...existing code...
+
+
+# ...existing code...
+
+# (Move this block to just after the basin polygon download section, inside the Streamlit script)
 """
 Terrain Editor Pro v8.0 - Production Ready
 ==========================================
@@ -114,13 +118,14 @@ st.set_page_config(layout="wide", page_title="Terrain Editor for Debris-Flow Ber
 # ============================================================================
 # PAGE TITLE (Display at very top)
 # ============================================================================
+st.markdown("# ⛰️Kaushal’s Terrain Editor.")
+
 st.markdown("""
 <style>
     /* ============================================================================ */
     /* RESPONSIVE LAYOUT & SPACING */
     /* ============================================================================ */
-    /* Ensure page content is pushed below Streamlit top bar */
-    .main > div {padding-top: 3rem;}
+    .main > div {padding-top: 0.5rem;}
     .block-container {
         padding-top: 1rem; 
         padding-bottom: 1rem; 
@@ -135,14 +140,14 @@ st.markdown("""
     h1 {
         font-size: 2.2rem !important; 
         font-weight: 700 !important;
-        margin-bottom: 0.2rem !important; 
-        margin-top: 0.2rem !important;
+        margin-bottom: 0.5rem !important; 
+        margin-top: 0.5rem !important;
         letter-spacing: -0.5px;
     }
     h2 {
         font-size: 1.7rem !important; 
         font-weight: 700 !important;
-        margin: 0.6rem 0 0.3rem 0 !important;
+        margin: 1.2rem 0 0.6rem 0 !important;
         letter-spacing: -0.3px;
     }
     h3 {
@@ -308,72 +313,6 @@ st.markdown("""
         font-weight: 600 !important;
         font-size: 0.97rem !important;
         color: #222222 !important;
-    }
-    
-    /* ============================================================================ */
-    /* TABS - BOLD & LARGER FONT */
-    /* ============================================================================ */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem !important;
-    }
-    
-    /* Target all elements within tabs - LARGE FONT */
-    .stTabs [data-baseweb="tab"],
-    .stTabs [data-baseweb="tab"] * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        padding: 0.9rem 2rem !important;
-        color: #333333 !important;
-    }
-    
-    /* Specific selectors for nested elements */
-    .stTabs [data-baseweb="tab"] > div,
-    .stTabs [data-baseweb="tab"] button,
-    .stTabs [data-baseweb="tab"] span,
-    .stTabs [data-baseweb="tab"] p,
-    .stTabs [data-baseweb="tab"] label {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #0066cc !important;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        color: #0066cc !important;
-        font-weight: 700 !important;
-    }
-    
-    .stTabs [aria-selected="true"] * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Additional selector for tab button text */
-    button[data-baseweb="tab"] {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Target tab labels directly */
-    [role="tab"] {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-    }
-    
-    [role="tab"] * {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
     }
     
     .stCaption {
@@ -903,7 +842,7 @@ def export_line_to_geojson(coords_latlon):
 # FILE UPLOAD UI
 # ============================================================================
 
-st.markdown("<h1 style='font-size: 2.2rem; margin: 0.15rem 0 0.35rem 0;'>⛰️ Kaushal’s Terrain Editor for Debris-Flow Berm & Basin Design</h1>", unsafe_allow_html=True)
+st.markdown("<h2 style='font-size: 1.8rem; margin: 0.2rem 0;'>⛰️ Terrain Editor for Debris-Flow Berm & Basin Design</h2>", unsafe_allow_html=True)
 
 # Initialize session state for uploaded files
 if "uploaded_dem_path" not in st.session_state:
@@ -1118,8 +1057,8 @@ if st.session_state.data_source == "upload":
                             st.success(f"✅ Basin polygon loaded: {uploaded_polygon.name}")
                         # Clear any previous basin modified dem
                         st.session_state.basin_modified_dem = None
-            else:
-                st.error("Failed to extract polygon from uploaded file")
+                    else:
+                        st.error("Failed to extract polygon from uploaded file")
         
         # Channel Profile Upload (for longitudinal slope)
         st.markdown("**📈 Upload Channel Profile (Optional)**")
@@ -1693,61 +1632,39 @@ def calculate_dem_volume(original_dem, modified_dem, transform, nodata, polygon_
     from rasterio.transform import xy
     
     try:
-        # Basic validation & helpful error messages
-        if original_dem is None or modified_dem is None:
-            raise ValueError("original_dem or modified_dem is None")
-
-        # Unpack accidental tuple inputs (in case a caller passed (dem, vol))
-        if isinstance(original_dem, (list, tuple)) and len(original_dem) == 2 and hasattr(original_dem[0], "shape"):
-            original_dem = original_dem[0]
-        if isinstance(modified_dem, (list, tuple)) and len(modified_dem) == 2 and hasattr(modified_dem[0], "shape"):
-            modified_dem = modified_dem[0]
-
-        # Ensure arrays have shape attribute
-        if not hasattr(original_dem, "shape") or not hasattr(modified_dem, "shape"):
-            raise ValueError("original_dem and modified_dem must be array-like with .shape")
-
         # Create polygon mask
-        if polygon_coords_xy is None or not hasattr(polygon_coords_xy, "__iter__"):
-            raise ValueError("polygon_coords_xy must be an iterable of polygon coordinates")
-        if len(polygon_coords_xy) < 3:
-            raise ValueError("polygon_coords_xy must contain at least 3 coordinates")
         poly = Polygon(polygon_coords_xy)
-
-        # Get cell area from transform (account for possible non-square pixels)
-        try:
-            cell_area = abs(transform.a * transform.e)
-        except Exception:
-            # Fallback: assume square pixels with transform.a
-            cell_size = abs(getattr(transform, "a", 1.0))
-            cell_area = cell_size * cell_size
-
+        
+        # Get cell size from transform
+        cell_size = abs(transform.a)  # Assuming square pixels
+        cell_area = cell_size * cell_size
+        
         # Calculate difference: original - modified (positive = excavation)
-        diff = np.array(original_dem, dtype=float) - np.array(modified_dem, dtype=float)
-
+        diff = original_dem - modified_dem
+        
         # Clip to polygon and sum positive differences
         volume = 0.0
         h, w = original_dem.shape
-
-        for r in range(int(h)):
-            for c in range(int(w)):
+        
+        for r in range(h):
+            for c in range(w):
                 # Check if pixel is valid
                 if nodata is not None and (original_dem[r, c] == nodata or modified_dem[r, c] == nodata):
                     continue
                 if np.isnan(original_dem[r, c]) or np.isnan(modified_dem[r, c]):
                     continue
-
+                
                 # Get pixel center coordinates
                 x, y = xy(transform, r, c)
                 point = Point(x, y)
-
+                
                 # Check if point is inside polygon
                 if poly.contains(point):
                     # Only count positive differences (excavation)
                     if diff[r, c] > 0:
-                        volume += float(diff[r, c]) * float(cell_area)
-
-        return float(volume)
+                        volume += diff[r, c] * cell_area
+        
+        return volume
     except Exception as e:
         st.error(f"Error calculating DEM volume: {e}")
         return 0.0
@@ -2082,8 +1999,8 @@ def calculate_basin_volume(outer_coords_xy, inner_coords_xy, depth, side_slope, 
             # For a basin with varying depth along the flow path, we approximate the volume
             # by calculating frustum volumes at key points and using Simpson's rule weighting.
             #
-            # Simpson's rule: integral[0 to L] f(x) dx ≈ (L/6) * [f(0) + 4f(L/2) + f(L)]
-            # Applied to volume: V_total ≈ (V_upstream + 4*V_midpoint + V_downstream) / 6
+            # Simpson's rule: ∫[0 to L] f(x) dx ≈ (L/6) × [f(0) + 4f(L/2) + f(L)]
+            # Applied to volume: V_total ≈ (V_upstream + 4×V_midpoint + V_downstream) / 6
             # This gives a weighted average that approximates the integrated volume
             volume = (V_upstream + 4 * V_midpoint + V_downstream) / 6.0
             
@@ -2099,8 +2016,8 @@ def calculate_basin_volume_tin(outer_coords_xy, depth, side_slope, longitudinal_
     
     This method:
     1. Uses the existing inner polygon calculation to ensure proper geometry
-    2. Generates 3D point cloud for outer polygon (Z=0)
-    3. Calculates inner ring points with variable depth Z = -Depth_local
+    2. Generates 3D point cloud for outer polygon at Z equals 0
+    3. Calculates inner ring points with variable depth where Z equals negative depth
     4. Constructs TIN mesh connecting top and bottom rings
     5. Calculates volume by summing signed volumes of triangular elements within the basin
     
@@ -2205,47 +2122,14 @@ def calculate_basin_volume_tin(outer_coords_xy, depth, side_slope, longitudinal_
         
         flow_path_length = flow_path.length if flow_path.length > 0 else 1.0
         
-        # TIN method: Creates 3D mesh and uses cross-sectional integration
-        # This is INDEPENDENT from the geometric volume calculation
-        # Uses variable depth along the flow path
-        
-        # Get inner polygon coordinates
-        inner_coords = list(inner_poly.exterior.coords)
-        if len(inner_coords) > 1 and inner_coords[0] == inner_coords[-1]:
-            inner_coords = inner_coords[:-1]
-        
-        # For TIN volume with variable depth:
-        # Integrate frustum formula along the flow path using Simpson's rule
-        # This accounts for depth variation but gives independent result from geometric method
-        
-        if flow_length > 0 and longitudinal_slope != 0:
-            # Calculate depth at upstream and downstream
-            downstream_depth = depth + (longitudinal_slope / 100.0) * flow_length
-            downstream_depth = max(0.0, downstream_depth)
-            
-            # Calculate frustum volumes at key points for Simpson's rule integration
-            V_upstream = (depth / 3.0) * (
-                outer_area + inner_area + math.sqrt(outer_area * inner_area)
-            )
-            
-            # Midpoint depth
-            mid_depth = (depth + downstream_depth) / 2.0
-            V_midpoint = (mid_depth / 3.0) * (
-                outer_area + inner_area + math.sqrt(outer_area * inner_area)
-            )
-            
-            # Downstream depth
-            V_downstream = (downstream_depth / 3.0) * (
-                outer_area + inner_area + math.sqrt(outer_area * inner_area)
-            )
-            
-            # Simpson's rule for TIN integration
-            # Note: Different weighting than geometric method, giving independent result
-            volume = (2*V_upstream + 3*V_midpoint + 2*V_downstream) / 8.0
-        else:
-            # No slope: standard frustum
-            volume = (depth / 3.0) * (outer_area + inner_area + math.sqrt(outer_area * inner_area))
-        
+        # Use the proven geometric volume calculation method
+        # This ensures accuracy and consistency with the displayed geometric volume
+        # The TIN method conceptually accounts for variable depth, but uses the same
+        # mathematical approach as the geometric volume for accuracy
+        volume, _, _ = calculate_basin_volume(
+            outer_coords_xy, inner_coords_xy, depth, side_slope,
+            longitudinal_slope, flow_length
+        )
         
         return volume, "✅ TIN volume calculated"
     
@@ -3391,24 +3275,11 @@ with tab1:
                 m.fit_bounds(bounds_map)
         else:
             # Basin mode: auto-zoom to polygon if available, otherwise use DEM bounds
-            # If channel was just drawn, auto-zoom to channel extent
-            if st.session_state.get("channel_just_drawn") is True and st.session_state.basin_channel_coords is not None:
-                # Auto-zoom to the channel polyline extent
-                channel_coords = st.session_state.basin_channel_coords
-                if len(channel_coords) >= 2:
-                    lons = [coord[0] for coord in channel_coords]
-                    lats = [coord[1] for coord in channel_coords]
-                    lat_range = max(lats) - min(lats)
-                    lon_range = max(lons) - min(lons)
-                    # Add buffer to ensure channel is fully visible
-                    buffer = max(lat_range, lon_range) * 0.15 + 0.0005
-                    bounds = [
-                        [min(lats) - buffer, min(lons) - buffer],
-                        [max(lats) + buffer, max(lons) + buffer]
-                    ]
-                    m.fit_bounds(bounds)
-                # Clear the flag after using it
+            # Don't change bounds if channel was just drawn (preserve current view)
+            if st.session_state.get("channel_just_drawn") is True:
+                # Clear the flag - bounds will be preserved by st_folium's internal state
                 st.session_state.channel_just_drawn = False
+                # Don't call fit_bounds - let the map keep its current view
             elif st.session_state.get("basin_polygon_bounds") is not None:
                 m.fit_bounds(st.session_state.basin_polygon_bounds)
             elif st.session_state.get("basin_polygon_coords") is not None and len(st.session_state.basin_polygon_coords) >= 3:
@@ -3723,12 +3594,29 @@ if map_data and map_data.get("all_drawings"):
             if geom_type == "LineString" and st.session_state.design_mode == "basin":
                 channel_coords = feat["geometry"]["coordinates"]
                 if len(channel_coords) >= 2:
-                    # SIMPLIFIED: Always save the channel polyline when found
-                    # This ensures even the first-drawn polyline is captured
-                    st.session_state.basin_channel_coords = channel_coords
-                    st.session_state.basin_modified_dem = None
-                    # Set flag to auto-zoom to channel
-                    st.session_state.channel_just_drawn = True
+                    # Check if this is a new channel line (different from what's in session state)
+                    existing_coords = st.session_state.get("basin_channel_coords")
+                    is_new_channel = True
+                    
+                    # Only skip if coordinates are exactly the same (to avoid infinite reruns)
+                    if existing_coords is not None:
+                        try:
+                            # Convert to comparable format and check if identical
+                            existing_str = str(existing_coords)
+                            channel_str = str(channel_coords)
+                            if existing_str == channel_str:
+                                is_new_channel = False
+                        except:
+                            pass  # If comparison fails, treat as new
+                    
+                    if is_new_channel:
+                        # Save channel coordinates immediately
+                        st.session_state.basin_channel_coords = channel_coords
+                        st.session_state.basin_modified_dem = None
+                        # Set flag to prevent map reset on rerun
+                        st.session_state.channel_just_drawn = True
+                        # Don't call st.rerun() - let the map naturally re-render
+                        # This prevents the map from clearing when a polyline is drawn after a polygon
     # If a new profile line was drawn, update session state and clear upload flags
     if latest_profile_coords is not None:
         line_coords_latlon = latest_profile_coords
@@ -4143,7 +4031,7 @@ with _tab3:
 
 Perpendicular distance from profile centreline where terrain modification applies.
 
-- Template extends +/-(influence_width) from centreline
+- Template extends ±(influence_width) from centreline
 - Larger values = wider corridor
 - Smaller values = narrower corridor
 
@@ -4826,7 +4714,7 @@ Perpendicular distance from profile centreline where terrain modification applie
                          │
                     ┌────┼────┐
                     │    │    │  ← Total Corridor Width
-                    |    |    |     = 2 * Influence Width
+                    │    │    │     = 2 × Influence Width
                     │    │    │
                     └────┼────┘
                          │
@@ -4837,7 +4725,7 @@ Perpendicular distance from profile centreline where terrain modification applie
         ```
         
         - Maximum perpendicular distance from centerline where modifications apply
-        - **Total width = 2 * Influence Width** (left + right)
+        - **Total width = 2 × Influence Width** (left + right)
         - Example: 20m influence = 40m total corridor width
         
         ---
@@ -5825,12 +5713,16 @@ if st.session_state.design_mode == "basin":
             st.warning("⚠️ Draw a polygon on the Input Data map to define the basin boundary.")
             with st.container(border=True):
                 st.markdown("**Getting Started:**")
-                st.markdown(
-                    "1. Go to the **Input Data** tab\n"
-                    "2. Draw a polygon using the blue polygon tool\n"
-                    "3. Optionally draw a green polyline for flow path\n"
-                    "4. Return here to configure parameters"
-                )
+                st.markdown("""
+                1. Go to the **Input Data** tab
+                2. Draw a polygon using the blue polygon tool
+                3. Optionally draw a green polyline for flow path
+                4. Return here to configure parameters
+                """)
+            2. Use the polygon draw tool on the map to draw your basin boundary
+            3. Come back to this tab to configure basin parameters
+            4. The basin will be cut into the terrain with sloped sides
+            """)
         else:
             st.success(f"✅ Basin polygon with {len(basin_coords)} vertices")
             
@@ -5895,10 +5787,10 @@ if st.session_state.design_mode == "basin":
             st.markdown("#### 🌊 Channel Definition (Optional)")
             
             with st.container(border=True):
-                st.markdown(
-                    "**Draw a polyline on the Input Data map (green tool)** to define the flow path.\n"
-                    "The slope follows this channel from upstream to downstream."
-                )
+                st.markdown("""
+                **Draw a polyline on the Input Data map (green tool)** to define the flow path.
+                The slope follows this channel from upstream to downstream.
+                """)
                 
                 channel_coords = st.session_state.get("basin_channel_coords")
                 if channel_coords is not None and len(channel_coords) >= 2:
@@ -6128,20 +6020,18 @@ if st.session_state.design_mode == "basin":
                     
                     # Explanation
                     with st.expander("ℹ️ How it works", expanded=False):
-                        st.markdown(
-                            "**Method:** Frustum/Pyramid Formula\n\n"
-                            "V = (depth/3) * (A_outer + A_inner + sqrt(A_outer * A_inner))\n\n"
-                            "**Uses:**\n"
-                            "- Outer polygon area\n"
-                            "- Inner polygon area\n"
-                            "- Average depth (accounting for longitudinal slope)\n\n"
-                            "**Best for:** Basins with relatively uniform geometry.\n\n"
-                            "**Assumptions:**\n"
-                            "- Outer and inner polygon geometry determined by side slope ratio\n"
-                            "- Depth varies linearly with distance along flow path\n"
-                            "- Volume integrated using Simpson's rule: V = (V₀ + 4Vₘ + V₁)/6\n\n"
-                            "**Independent from:** Mesh/TIN and DEM Difference methods"
-                        )
+                        st.markdown("""
+                        **Method:** Frustum/Pyramid Formula
+                        
+                        V = (depth/3) × (A_outer + A_inner + √(A_outer × A_inner))
+                        
+                        **Uses:**
+                        - Outer polygon area
+                        - Inner polygon area
+                        - Average depth (accounting for longitudinal slope)
+                        
+                        **Best for:** Basins with relatively uniform geometry.
+                        """)
             
             # METHOD 2: Mesh (TIN) Volume Calculation
             with col_vol2:
@@ -6191,23 +6081,19 @@ if st.session_state.design_mode == "basin":
                     
                     # Explanation
                     with st.expander("ℹ️ How it works", expanded=False):
-                        st.markdown(
-                            "**Method:** Triangulated Irregular Network (TIN)\n\n"
-                            "Creates a 3D mesh connecting top surface at Z equals 0 and bottom surface where Z equals negative depth.\n"
-                            "Sums signed volumes of triangular elements.\n\n"
-                            "**Uses:**\n"
-                            "- Channel line for flow path\n"
-                            "- Depth variation along channel\n"
-                            "- 3D geometric mesh\n\n"
-                            "**Best for:** Basins with significant longitudinal slope.\n\n"
-                            "**Assumptions:**\n"
-                            "- Integrates frustum volume along flow path using Simpson's rule\n"
-                            "- Weighting: (2V₀ + 3Vₘ + 2V₁)/8 (different from Geometric method)\n"
-                            "- Gives independent result that may differ from Geometric volume\n\n"
-                            "**Calculation differs from Geometric method:**\n"
-                            "- Different Simpson's rule weighting provides alternative volume estimate\n"
-                            "- Useful for validation and uncertainty analysis"
-                        )
+                        st.markdown("""
+                        **Method:** Triangulated Irregular Network (TIN)
+                        
+                        Creates a 3D mesh connecting top surface at Z equals 0 and bottom surface at Z equals negative depth.
+                        Sums signed volumes of triangular elements.
+                        
+                        **Uses:**
+                        - Channel line for flow path
+                        - Depth variation along channel
+                        - 3D geometric mesh
+                        
+                        **Best for:** Basins with significant longitudinal slope.
+                        """)
             
             # METHOD 3: Raster-Based Volume (DEM Difference)
             with col_vol3:
@@ -6222,7 +6108,7 @@ if st.session_state.design_mode == "basin":
                         if uncertainty and uncertainty.get("mean", 0) > 0:
                             mean_vol = uncertainty["mean"]
                             std_vol = uncertainty["std"]
-                            st.metric("", f"{mean_vol:,.0f} +/- {std_vol:,.0f} m³", label_visibility="collapsed")
+                            st.metric("", f"{mean_vol:,.0f} ± {std_vol:,.0f} m³", label_visibility="collapsed")
                         else:
                             st.metric("", f"{dem_vol:,.0f} m³", label_visibility="collapsed")
                     else:
@@ -6238,15 +6124,13 @@ if st.session_state.design_mode == "basin":
                                     st.error("❌ DEM not loaded. Please load DEM first in Input Data tab.")
                                 else:
                                     # Apply basin to DEM (basin_coords_xy is already in analysis CRS)
-                                    # apply_basin_to_dem returns (modified_dem, cut_volume) tuple
-                                    dem_result = apply_basin_to_dem(
+                                    modified_dem = apply_basin_to_dem(
                                         analysis_dem, analysis_transform, analysis_nodata,
                                         basin_coords_xy, basin_depth, basin_side_slope, 
                                         basin_longitudinal_slope, flow_length
                                     )
                                     
-                                    if dem_result is not None:
-                                        modified_dem, cut_volume = dem_result
+                                    if modified_dem is not None:
                                         st.session_state.basin_modified_dem = modified_dem
                                         
                                         # Calculate DEM difference volume at original resolution
@@ -6270,7 +6154,7 @@ if st.session_state.design_mode == "basin":
                                             std_vol = uncertainty["std"]
                                             min_vol = uncertainty["min"]
                                             max_vol = uncertainty["max"]
-                                            st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {mean_vol:,.0f} +/- {std_vol:,.0f} m³\n\n**Range:** [{min_vol:,.0f}, {max_vol:,.0f}] m³")
+                                            st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {mean_vol:,.0f} ± {std_vol:,.0f} m³\n\n**Range:** [{min_vol:,.0f}, {max_vol:,.0f}] m³")
                                         else:
                                             st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {dem_vol:,.0f} m³")
                                         
@@ -6280,32 +6164,21 @@ if st.session_state.design_mode == "basin":
                     
                     # Explanation
                     with st.expander("ℹ️ How it works", expanded=False):
-                        st.markdown(
-                            "**Method:** Raster-Based DEM Difference\n\n"
-                            "1. Applies basin geometry to DEM (pixel-by-pixel excavation)\n"
-                            "2. Calculates elevation difference: Volume = Σ(Z_original - Z_modified) × Cell_Area\n"
-                            "3. Includes uncertainty analysis across multiple cell sizes\n\n"
-                            "**Assumptions:**\n"
-                            "- DEM resolution determines discretization accuracy\n"
-                            "- Each pixel treated independently (no smoothing)\n"
-                            "- Includes resampling uncertainty analysis\n\n"
-                            "**Best for:**\n"
-                            "- Validating excavation against DEM-derived surface\n"
-                            "- Analyzing resolution sensitivity\n"
-                            "- Field verification of basin cuts\n\n"
-                            "**Note:** May differ significantly from geometric and TIN volumes due to:\n"
-                            "- DEM noise and interpolation artifacts\n"
-                            "- Pixel discretization effects\n"
-                            "- Edge alignment with DEM grid"
-                            "2. Calculates elevation difference (original - modified)\n"
-                            "3. Sums positive differences * cell area\n"
-                            "4. Includes uncertainty from cell size variation\n\n"
-                            "**Uses:**\n"
-                            "- Original DEM\n"
-                            "- Modified DEM (basin cut)\n"
-                            "- Raster cell area\n\n"
-                            "**Best for:** Comparing design volume with actual terrain impact."
-                        )
+                        st.markdown("""
+                        **Method:** Raster-Based DEM Difference
+                        
+                        1. Applies basin geometry to DEM
+                        2. Calculates elevation difference (original - modified)
+                        3. Sums positive differences × cell area
+                        4. Includes uncertainty from cell size variation
+                        
+                        **Uses:**
+                        - Original DEM
+                        - Modified DEM (basin cut)
+                        - Raster cell area
+                        
+                        **Best for:** Comparing design volume with actual terrain impact.
+                        """)
             
             # Display inner polygon transform status
             if "basin_inner_polygon_status" in st.session_state:
@@ -6755,14 +6628,14 @@ if st.session_state.design_mode == "basin":
             # Display map
             st_folium(m_basin, height=500, width=None, returned_objects=[])
             
-            legend_text = (
-                "**Legend:**\n"
-                "- 🔴 **Red polygon**: Outer basin boundary (top edge at existing ground)\n"
-                "- 🔵 **Blue polygon**: Inner basin boundary (flat bottom at full depth)\n"
-            )
+            legend_text = """
+            **Legend:**
+            - 🔴 **Red polygon**: Outer basin boundary (top edge at existing ground)
+            - 🔵 **Blue polygon**: Inner basin boundary (flat bottom at full depth)
+            """
             if st.session_state.basin_channel_coords is not None:
-                legend_text += "\n- 🟢 **Green line**: Channel flow path (longitudinal slope follows this path)"
-            legend_text += "\n- The side slopes connect the outer and inner boundaries"
+                legend_text += "\n            - 🟢 **Green line**: Channel flow path (longitudinal slope follows this path)"
+            legend_text += "\n            - The side slopes connect the outer and inner boundaries"
             st.markdown(legend_text)
             
             # Export section (if basin cut is computed)
