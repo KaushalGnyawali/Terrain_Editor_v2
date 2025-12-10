@@ -3082,6 +3082,24 @@ with tab1:
             except Exception as e:
                 st.warning(f"Error displaying basin polygon: {e}")
         
+        # Also display channel line independently (even if no basin polygon drawn yet)
+        # This ensures polyline persists after first draw
+        if (st.session_state.design_mode == "basin" and 
+            st.session_state.basin_channel_coords is not None):
+            try:
+                channel_coords = st.session_state.basin_channel_coords
+                if len(channel_coords) >= 2:
+                    channel_display_coords = [[c[1], c[0]] for c in channel_coords]
+                    folium.PolyLine(
+                        locations=channel_display_coords,
+                        color='#00ff00',
+                        weight=4,
+                        opacity=0.8,
+                        tooltip='Basin Channel Profile'
+                    ).add_to(m)
+            except Exception:
+                pass  # Silently fail if channel display has issues
+        
         # Zoom to latest drawn profile line if available, otherwise use DEM bounds
         if st.session_state.design_mode == "profile":
             # If a user-drawn line exists, auto-zoom to its extent
@@ -3443,8 +3461,8 @@ if map_data and map_data.get("all_drawings"):
                         st.session_state.basin_modified_dem = None
                         # Set flag to prevent map reset on rerun
                         st.session_state.channel_just_drawn = True
-                        # Force rerun so channel line and S0/S1 stations appear immediately
-                        st.rerun()
+                        # Don't call st.rerun() - let the map naturally re-render
+                        # This prevents the map from clearing when a polyline is drawn after a polygon
     # If a new profile line was drawn, update session state and clear upload flags
     if latest_profile_coords is not None:
         line_coords_latlon = latest_profile_coords
@@ -3462,8 +3480,8 @@ if map_data and map_data.get("all_drawings"):
             [min(lats) - buffer, min(lons) - buffer],
             [max(lats) + buffer, max(lons) + buffer]
         ]
-        # Force rerun so download buttons and map update immediately
-        st.rerun()
+        # Don't call st.rerun() - st_folium already triggers rerun when drawing data changes
+        # This prevents the map from clearing and redrawing unnecessarily
 
 # Third priority: Restore from session state
 if line_coords_latlon is None and "profile_line_coords" in st.session_state:
@@ -5458,12 +5476,20 @@ with _tab2:
                 # Subsequent loads: zoom to full extent of profile line
                 m_prof.fit_bounds(st.session_state.profile_bounds, padding=(20, 20))
             else:
-                # Fallback: zoom to selected station if profile bounds not available
-                station_buffer = 0.0001
-            m_prof.fit_bounds([
-                [lat_station_prof - station_buffer, lon_station_prof - station_buffer],
-                [lat_station_prof + station_buffer, lon_station_prof + station_buffer]
-                ], padding=(20, 20))
+                # Fallback: zoom to selected station with buffer
+                # This ensures the selected station is visible on the map
+                station_buffer = 0.0001  # About 10m at mid-latitudes
+                try:
+                    if len(center_xy) > 0:
+                        x_station, y_station = center_xy[current_station_idx_prof]
+                        lon_station, lat_station = transformer_to_map.transform(x_station, y_station)
+                        m_prof.fit_bounds([
+                            [lat_station - station_buffer, lon_station - station_buffer],
+                            [lat_station + station_buffer, lon_station + station_buffer]
+                        ], padding=(20, 20))
+                except (IndexError, ValueError, TypeError):
+                    # If station not available, use a default center view
+                    pass
             
             # Use a stable key for first-time load to prevent map reset, then use dynamic key for subsequent loads
             if first_time_profile_tab:
@@ -5547,7 +5573,7 @@ if st.session_state.design_mode == "basin":
             with col_bp1:
                 basin_depth = st.number_input(
                     "Basin Depth (m)", 
-                    0.5, 20.0, 
+                    0.5, 60.0, 
                     st.session_state.basin_depth, 
                     0.5,
                     key="basin_depth_input",
@@ -5569,7 +5595,7 @@ if st.session_state.design_mode == "basin":
             with col_bp3:
                 basin_longitudinal_slope = st.number_input(
                     "Longitudinal Slope (%)", 
-                    -50.0, 50.0, 
+                    -200.0, 200.0, 
                     st.session_state.basin_longitudinal_slope, 
                     0.1,
                     key="basin_long_slope_input",
@@ -5787,98 +5813,181 @@ if st.session_state.design_mode == "basin":
                 else:
                     st.metric("Inner Area (Bottom)", "Point/N/A")
             
-            # TIN Volume Calculation Section
+            # Volume Calculation Methods - Three Column Layout
             st.markdown("---")
-            st.markdown("#### Mesh (TIN) Volume Calculation")
+            st.markdown("#### Volume Calculation Methods")
+            st.caption("Three independent methods to calculate basin volume. Each method uses different computational approaches.")
             
-            col_tin1, col_tin2 = st.columns([2, 1])
-            with col_tin1:
-                # Initialize TIN volume in session state if not present
-                if "basin_tin_volume" not in st.session_state:
-                    st.session_state.basin_tin_volume = None
-                    st.session_state.basin_tin_status = None
-                
-                # Button to calculate TIN volume
-                if st.button("🔺 Calculate Mesh (TIN) Volume", type="secondary", 
-                            help="Calculate volume using Triangulated Irregular Network (TIN) method. This method precisely handles varying depth due to longitudinal slope by creating a 3D mesh between the top and bottom surfaces."):
-                    with st.spinner("Calculating TIN volume..."):
-                        # Get channel coordinates in projected CRS if available
-                        channel_coords_xy = None
-                        if st.session_state.basin_channel_coords is not None:
-                            channel_coords_xy = []
-                            for lon, lat in st.session_state.basin_channel_coords:
-                                try:
-                                    x, y = transformer_to_analysis.transform(lon, lat)
-                                    channel_coords_xy.append((x, y))
-                                except Exception:
-                                    pass
-                        
-                        tin_volume, tin_status = calculate_basin_volume_tin(
-                            basin_coords_xy, basin_depth, basin_side_slope,
-                            basin_longitudinal_slope, flow_length, channel_coords_xy
-                        )
-                        st.session_state.basin_tin_volume = tin_volume
-                        st.session_state.basin_tin_status = tin_status
-                        st.rerun()
-                
-                # Display TIN volume result
-                if st.session_state.basin_tin_volume is not None:
-                    tin_vol = st.session_state.basin_tin_volume
-                    tin_status = st.session_state.basin_tin_status
+            col_vol1, col_vol2, col_vol3 = st.columns(3)
+            
+            # METHOD 1: Geometric Volume (Auto-calculated)
+            with col_vol1:
+                with st.container(border=True):
+                    st.markdown("**① Geometric Volume**")
                     
-                    if tin_status and tin_status.startswith("✅"):
-                        st.metric("Mesh (TIN) Volume", f"{tin_vol:,.0f} m³")
-                    else:
-                        st.metric("Mesh (TIN) Volume", "N/A", help=tin_status if tin_status else "Calculation failed")
-                        if tin_status:
-                            st.caption(tin_status)
-            
-            with col_tin2:
-                with st.expander("ℹ️ Volume Calculation Methods", expanded=False):
-                    st.markdown("""
-                    **Geometric Volume (Frustum/Pyramid):**
-                    Volume calculated using geometric formulas based on average depth and constant offset. 
-                    Uses frustum formula: V = (depth/3) × (A_outer + A_inner + √(A_outer × A_inner))
-                    or pyramid formula when inner area is zero. Assumes perfect geometric shapes with 
-                    average depth accounting for longitudinal slope.
+                    # Display value
+                    st.metric("", f"{volume:,.0f} m³", label_visibility="collapsed")
                     
-                    **Mesh (TIN) Volume:**
-                    Volume calculated using Triangulated Irregular Network (TIN) approach. Creates a 3D 
-                    mesh connecting the top surface (Z=0) and bottom surface (Z=-depth_local) where depth 
-                    varies along the flow path. Volume is calculated by summing signed volumes of 
-                    triangular elements. This method is more accurate for basins with longitudinal slope 
-                    as it precisely handles the varying depth at each point rather than using an average.
-                    """)
-            
-            # DEM-based volume (if computed)
-            if st.session_state.basin_modified_dem is not None:
-                dem_vol = st.session_state.basin_volumes.get("dem_volume", 0.0)
-                uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
-                
-                st.markdown("---")
-                col_dem1, col_dem2 = st.columns([2, 1])
-                with col_dem1:
-                    if uncertainty and uncertainty.get("mean", 0) > 0:
-                        mean_vol = uncertainty["mean"]
-                        std_vol = uncertainty["std"]
-                        min_vol = uncertainty["min"]
-                        max_vol = uncertainty["max"]
-                        st.metric(
-                            "DEM Difference Volume",
-                            f"{mean_vol:,.0f} ± {std_vol:,.0f} m³",
-                            help=f"Range: [{min_vol:,.0f}, {max_vol:,.0f}] m³"
-                        )
-                        st.caption(f"Range: [{min_vol:,.0f}, {max_vol:,.0f}] m³")
-                    else:
-                        st.metric("DEM Difference Volume", f"{dem_vol:,.0f} m³")
-                with col_dem2:
-                    with st.expander("ℹ️ Volume Calculation Methods", expanded=False):
+                    # Explanation
+                    with st.expander("ℹ️ How it works", expanded=False):
                         st.markdown("""
-                        **Geometric Volume:**
-                        Volume from designed ditch geometry. Calculated using geometric formulas based on basin parameters (outer polygon area, inner polygon area, depth, and slopes). Assumes perfect geometric shapes.
+                        **Method:** Frustum/Pyramid Formula
                         
-                        **DEM Difference Volume:**
-                        Volume from raster elevation subtraction. Calculated by differencing original and modified DEMs, clipping both to basin polygon, and summing positive differences (excavation) × cell area. Includes uncertainty analysis across cell sizes (0.5-5 m). Reported as mean ± standard deviation with [min, max] range.
+                        V = (depth/3) × (A_outer + A_inner + √(A_outer × A_inner))
+                        
+                        **Uses:**
+                        - Outer polygon area
+                        - Inner polygon area
+                        - Average depth (accounting for longitudinal slope)
+                        
+                        **Best for:** Basins with relatively uniform geometry.
+                        """)
+            
+            # METHOD 2: Mesh (TIN) Volume Calculation
+            with col_vol2:
+                with st.container(border=True):
+                    st.markdown("**② Mesh (TIN) Volume**")
+                    
+                    # Initialize TIN volume in session state if not present
+                    if "basin_tin_volume" not in st.session_state:
+                        st.session_state.basin_tin_volume = None
+                        st.session_state.basin_tin_status = None
+                    
+                    # Display value or placeholder
+                    if st.session_state.basin_tin_volume is not None:
+                        tin_vol = st.session_state.basin_tin_volume
+                        tin_status = st.session_state.basin_tin_status
+                        if tin_status and tin_status.startswith("✅"):
+                            st.metric("", f"{tin_vol:,.0f} m³", label_visibility="collapsed")
+                        else:
+                            st.metric("", "N/A", label_visibility="collapsed")
+                            if tin_status:
+                                st.caption(f"⚠️ {tin_status}")
+                    else:
+                        st.caption("Click button to calculate")
+                    
+                    # Calculate button
+                    if st.button("🔺 Calculate", key="btn_tin_volume",
+                                help="Calculate volume using Triangulated Irregular Network (TIN) method. Creates a 3D mesh between top and bottom surfaces, handling varying depth due to longitudinal slope."):
+                        with st.spinner("Calculating TIN volume..."):
+                            # Get channel coordinates in projected CRS if available
+                            channel_coords_xy = None
+                            if st.session_state.basin_channel_coords is not None:
+                                channel_coords_xy = []
+                                for lon, lat in st.session_state.basin_channel_coords:
+                                    try:
+                                        x, y = transformer_to_analysis.transform(lon, lat)
+                                        channel_coords_xy.append((x, y))
+                                    except Exception:
+                                        pass
+                            
+                            tin_volume, tin_status = calculate_basin_volume_tin(
+                                basin_coords_xy, basin_depth, basin_side_slope,
+                                basin_longitudinal_slope, flow_length, channel_coords_xy
+                            )
+                            st.session_state.basin_tin_volume = tin_volume
+                            st.session_state.basin_tin_status = tin_status
+                            st.rerun()
+                    
+                    # Explanation
+                    with st.expander("ℹ️ How it works", expanded=False):
+                        st.markdown("""
+                        **Method:** Triangulated Irregular Network (TIN)
+                        
+                        Creates a 3D mesh connecting top surface (Z=0) and bottom surface (Z=-depth_local).
+                        Sums signed volumes of triangular elements.
+                        
+                        **Uses:**
+                        - Channel line for flow path
+                        - Depth variation along channel
+                        - 3D geometric mesh
+                        
+                        **Best for:** Basins with significant longitudinal slope.
+                        """)
+            
+            # METHOD 3: Raster-Based Volume (DEM Difference)
+            with col_vol3:
+                with st.container(border=True):
+                    st.markdown("**③ DEM Difference Volume**")
+                    
+                    # Display value or placeholder
+                    if st.session_state.basin_modified_dem is not None:
+                        dem_vol = st.session_state.basin_volumes.get("dem_volume", 0.0)
+                        uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
+                        
+                        if uncertainty and uncertainty.get("mean", 0) > 0:
+                            mean_vol = uncertainty["mean"]
+                            std_vol = uncertainty["std"]
+                            st.metric("", f"{mean_vol:,.0f} ± {std_vol:,.0f} m³", label_visibility="collapsed")
+                        else:
+                            st.metric("", f"{dem_vol:,.0f} m³", label_visibility="collapsed")
+                    else:
+                        st.caption("Click button to compute")
+                    
+                    # Compute button
+                    if st.button("🖥️ Compute", key="btn_dem_volume",
+                                help="Compute basin cut on the DEM and calculate volume from elevation difference. Includes uncertainty analysis across multiple cell sizes."):
+                        with st.spinner("Computing basin cut and volume..."):
+                            try:
+                                # Check if DEM is loaded
+                                if analysis_dem is None:
+                                    st.error("❌ DEM not loaded. Please load DEM first in Input Data tab.")
+                                else:
+                                    # Apply basin to DEM (basin_coords_xy is already in analysis CRS)
+                                    modified_dem = apply_basin_to_dem(
+                                        analysis_dem, analysis_transform, analysis_nodata,
+                                        basin_coords_xy, basin_depth, basin_side_slope, 
+                                        basin_longitudinal_slope, flow_length
+                                    )
+                                    
+                                    if modified_dem is not None:
+                                        st.session_state.basin_modified_dem = modified_dem
+                                        
+                                        # Calculate DEM difference volume at original resolution
+                                        dem_vol = calculate_dem_volume(
+                                            analysis_dem, modified_dem, analysis_transform, 
+                                            analysis_nodata, basin_coords_xy
+                                        )
+                                        
+                                        # Calculate uncertainty across multiple cell sizes
+                                        uncertainty = calculate_dem_volume_uncertainty(
+                                            analysis_dem, modified_dem, analysis_transform, 
+                                            analysis_nodata, basin_coords_xy, analysis_crs
+                                        )
+                                        
+                                        st.session_state.basin_volumes["dem_volume"] = dem_vol
+                                        st.session_state.basin_volumes["dem_uncertainty"] = uncertainty
+                                        
+                                        cut_vol = st.session_state.basin_volumes.get("volume", 0.0)
+                                        if uncertainty and uncertainty.get("mean", 0) > 0:
+                                            mean_vol = uncertainty["mean"]
+                                            std_vol = uncertainty["std"]
+                                            min_vol = uncertainty["min"]
+                                            max_vol = uncertainty["max"]
+                                            st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {mean_vol:,.0f} ± {std_vol:,.0f} m³\n\n**Range:** [{min_vol:,.0f}, {max_vol:,.0f}] m³")
+                                        else:
+                                            st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {dem_vol:,.0f} m³")
+                                        
+                                        st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Error computing basin cut: {str(e)}")
+                    
+                    # Explanation
+                    with st.expander("ℹ️ How it works", expanded=False):
+                        st.markdown("""
+                        **Method:** Raster-Based DEM Difference
+                        
+                        1. Applies basin geometry to DEM
+                        2. Calculates elevation difference (original - modified)
+                        3. Sums positive differences × cell area
+                        4. Includes uncertainty from cell size variation
+                        
+                        **Uses:**
+                        - Original DEM
+                        - Modified DEM (basin cut)
+                        - Raster cell area
+                        
+                        **Best for:** Comparing design volume with actual terrain impact.
                         """)
             
             # Display inner polygon transform status
@@ -5892,65 +6001,6 @@ if st.session_state.design_mode == "basin":
             
             if inner_coords_xy is None:
                 st.info("ℹ️ Basin is very small or offset exceeds dimensions. The bottom area is minimal (point-like). Volume estimate shown above.")
-            
-            # Apply Basin to Terrain section (moved here, right after metrics)
-            st.markdown("---")
-            st.markdown("#### Apply Basin to Terrain")
-            
-            col_exp1, col_exp2 = st.columns([1, 2])
-            with col_exp1:
-                if st.button("🔄 Compute Basin Cut", type="primary"):
-                    with st.spinner("Computing basin modifications..."):
-                        # Convert channel coordinates to projected CRS if channel exists
-                        channel_coords_xy = None
-                        if st.session_state.basin_channel_coords is not None:
-                            channel_coords_xy = []
-                            for lon, lat in st.session_state.basin_channel_coords:
-                                x, y = transformer_to_analysis.transform(lon, lat)
-                                channel_coords_xy.append((x, y))
-                        
-                        new_dem, cut_vol = apply_basin_to_dem(
-                            analysis_dem, analysis_transform, analysis_nodata,
-                            basin_coords_xy, basin_depth, basin_side_slope,
-                            basin_longitudinal_slope, channel_coords_xy
-                        )
-                        st.session_state.basin_modified_dem = new_dem
-                        st.session_state.basin_volumes["cut_volume"] = cut_vol
-                        
-                        # Calculate DEM-based volume with uncertainty analysis (at original DEM resolution)
-                        with st.spinner("Calculating DEM-based volume with uncertainty analysis..."):
-                            # Calculate volume at original DEM resolution
-                            dem_vol = calculate_dem_volume(
-                                analysis_dem, new_dem, analysis_transform, analysis_nodata, basin_coords_xy
-                            )
-                            # Calculate uncertainty across multiple cell sizes
-                            uncertainty = calculate_dem_volume_uncertainty(
-                                analysis_dem, new_dem, analysis_transform, analysis_nodata, 
-                                basin_coords_xy, analysis_crs
-                            )
-                            st.session_state.basin_volumes["dem_volume"] = dem_vol
-                            st.session_state.basin_volumes["dem_uncertainty"] = uncertainty
-                            
-                            # Display results immediately
-                            if uncertainty and uncertainty.get("mean", 0) > 0:
-                                mean_vol = uncertainty["mean"]
-                                std_vol = uncertainty["std"]
-                                min_vol = uncertainty["min"]
-                                max_vol = uncertainty["max"]
-                                st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {mean_vol:,.0f} ± {std_vol:,.0f} m³\n\n**Range:** [{min_vol:,.0f}, {max_vol:,.0f}] m³")
-                            else:
-                                st.success(f"✅ Basin cut computed!\n\n**Geometric Volume:** {cut_vol:,.0f} m³\n\n**DEM Difference Volume:** {dem_vol:,.0f} m³")
-            
-            with col_exp2:
-                # Show DEM volume uncertainty if computed
-                if st.session_state.basin_modified_dem is not None:
-                    uncertainty = st.session_state.basin_volumes.get("dem_uncertainty", None)
-                    if uncertainty and uncertainty.get("mean", 0) > 0:
-                        mean_vol = uncertainty["mean"]
-                        std_vol = uncertainty["std"]
-                        min_vol = uncertainty["min"]
-                        max_vol = uncertainty["max"]
-                        st.info(f"**DEM Volume:** {mean_vol:,.0f} ± {std_vol:,.0f} m³\n\nRange: [{min_vol:,.0f}, {max_vol:,.0f}] m³")
             
             # Basin Profile Plot
             st.markdown("---")
