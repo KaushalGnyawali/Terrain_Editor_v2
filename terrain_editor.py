@@ -2269,6 +2269,136 @@ with tab1:
             draw_options=draw_options,
             edit_options={"edit": True},
         ).add_to(m)
+        # Inject client-side download + zoom-on-draw JS so downloads appear immediately
+        # and the map zooms to the drawn feature without rerunning the Streamlit app.
+        try:
+            map_var = m.get_name()
+        except Exception:
+            map_var = 'map'
+
+        download_js = f"""
+<div id='draw-downloads' style='position: absolute; top: 10px; right: 10px; z-index:1000; background: rgba(255,255,255,0.9); padding:6px; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.3);'></div>
+<script src='https://unpkg.com/tokml@0.4.0/tokml.js'></script>
+<script src='https://unpkg.com/shp-write@1.3.0/dist/shpwrite.min.js'></script>
+<script>
+(function(){{
+    function makeLink(id, text, url, filename){{
+        var div = document.getElementById('draw-downloads');
+        var a = document.getElementById(id);
+        if(!a){{
+            a = document.createElement('a');
+            a.id = id;
+            a.style.display = 'inline-block';
+            a.style.margin = '2px';
+            a.style.padding = '6px 8px';
+            a.style.background = '#007bff';
+            a.style.color = '#fff';
+            a.style.borderRadius = '4px';
+            a.style.textDecoration = 'none';
+            a.style.fontSize = '12px';
+            a.target = '_blank';
+            div.appendChild(a);
+        }}
+        a.href = url;
+        a.download = filename;
+        a.innerText = text;
+    }}
+
+    function geojsonToBlobURL(obj){{
+        var txt = JSON.stringify(obj);
+        var blob = new Blob([txt], {{type: 'application/geo+json'}});
+        return URL.createObjectURL(blob);
+    }}
+
+    function kmlFromGeoJSON(obj){{
+        try{{
+            var kml = tokml(obj);
+            var blob = new Blob([kml], {{type: 'application/vnd.google-earth.kml+xml'}});
+            return URL.createObjectURL(blob);
+        }}catch(e){{
+            return null;
+        }}
+    }}
+
+    function shpzipFromGeoJSON(obj, name){{
+        try{{
+            // shpwrite expects GeoJSON FeatureCollection
+            var fc = obj.type === 'FeatureCollection' ? obj : {{type:'FeatureCollection', features:[obj]}};
+            var zipArrayBuffer = shpwrite.zip(fc, {{folder: name, types: {{point: name}}}});
+            var blob = new Blob([zipArrayBuffer], {{type: 'application/zip'}});
+            return URL.createObjectURL(blob);
+        }}catch(e){{
+            return null;
+        }}
+    }}
+
+    // Wait for the folium map variable to be present
+    function findMapVar(){{
+        try{{
+            if(window['{map_var}']) return window['{map_var}'];
+        }}catch(e){{}}
+        // Fallback: find first Leaflet map on window
+        for(var k in window){{
+            try{{
+                var v = window[k];
+                if(v && v._leaflet_id) return v;
+            }}catch(e){{}}
+        }}
+        return null;
+    }}
+
+    function onDraw(e){{
+        var layer = e.layer || e.target || null;
+        var geo = null;
+        if(layer && layer.toGeoJSON){{
+            geo = layer.toGeoJSON();
+        }}else if(e.layerType === 'polygon' && e.layer){{
+            geo = e.layer.toGeoJSON();
+        }}
+        if(!geo) return;
+
+        // Fit bounds to drawn layer
+        try{{
+            var bounds = layer.getBounds();
+            map.fitBounds(bounds.pad ? bounds.pad(0.1) : bounds);
+        }}catch(err){{}}
+
+        // Create downloads
+        var geoURL = geojsonToBlobURL(geo);
+        if(geoURL) makeLink('dl_geojson', 'GeoJSON', geoURL, 'feature.geojson');
+        var kmlURL = kmlFromGeoJSON(geo);
+        if(kmlURL) makeLink('dl_kml', 'KML', kmlURL, 'feature.kml');
+        var shpURL = shpzipFromGeoJSON(geo, 'feature');
+        if(shpURL) makeLink('dl_shp', 'Shapefile (ZIP)', shpURL, 'feature_shp.zip');
+    }}
+
+    function attach(){{
+        var map = findMapVar();
+        if(!map){{ setTimeout(attach, 300); return; }}
+        try{{
+            map.on('draw:created', function(e){{
+                // Add to map layer so it remains visible
+                map.addLayer(e.layer);
+                onDraw(e);
+            }});
+            map.on('draw:edited', function(e){{
+                var layers = e.layers || e.target || null;
+                if(layers && layers.eachLayer){{
+                    layers.eachLayer(function(l){{
+                        onDraw({{layer: l}});
+                    }});
+                }}
+            }});
+        }}catch(err){{ setTimeout(attach, 300); }}
+    }}
+    attach();
+}})();
+</script>
+"""
+        try:
+            m.get_root().html.add_child(folium.Element(download_js))
+        except Exception:
+            pass
         
         # Add modified terrain profile overlay if available
         if (st.session_state.modified_dem is not None and 
@@ -3574,13 +3704,27 @@ Perpendicular distance from profile centreline where terrain modification applie
         x_station_xs, y_station_xs = center_xy[current_station_idx_xs]
         lon_station_xs, lat_station_xs = transformer_to_map.transform(x_station_xs, y_station_xs)
         
-        m_xs = folium.Map(
-            location=[lat_station_xs, lon_station_xs],
-            zoom_start=21,
-            max_zoom=24,
-            control_scale=False,
-            prefer_canvas=True
-        )
+        # Initialize map - use profile bounds if available, otherwise center on station
+        if "profile_bounds" in st.session_state and st.session_state.profile_bounds is not None:
+            # Use center of profile bounds as initial location, then fit to bounds
+            bounds_center_lat = (st.session_state.profile_bounds[0][0] + st.session_state.profile_bounds[1][0]) / 2
+            bounds_center_lon = (st.session_state.profile_bounds[0][1] + st.session_state.profile_bounds[1][1]) / 2
+            m_xs = folium.Map(
+                location=[bounds_center_lat, bounds_center_lon],
+                zoom_start=15,  # Lower zoom, will be adjusted by fit_bounds
+                max_zoom=24,
+                control_scale=False,
+                prefer_canvas=True
+            )
+        else:
+            # Fallback to station-centered view
+            m_xs = folium.Map(
+                location=[lat_station_xs, lon_station_xs],
+                zoom_start=21,
+                max_zoom=24,
+                control_scale=False,
+                prefer_canvas=True
+            )
         
         folium.TileLayer(
             tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
@@ -3751,16 +3895,9 @@ Perpendicular distance from profile centreline where terrain modification applie
             tooltip='Centerline (Offset = 0m)'
         ).add_to(m_xs)
         
-        # Zoom to profile bounds initially, then to selected station
+        # Auto-zoom to full extent of profile line when switching to Cross-Section tab
         if "profile_bounds" in st.session_state and st.session_state.profile_bounds is not None:
-            # First zoom to profile extent, then zoom to station
             m_xs.fit_bounds(st.session_state.profile_bounds)
-            # Then zoom to selected station with buffer
-            station_buffer = 0.0002
-            m_xs.fit_bounds([
-                [lat_station_xs - station_buffer, lon_station_xs - station_buffer],
-                [lat_station_xs + station_buffer, lon_station_xs + station_buffer]
-            ])
         else:
             # Fall back to station-only zoom if no profile bounds
             station_buffer = 0.0002
@@ -4613,13 +4750,27 @@ with _tab2:
             x_station_prof, y_station_prof = center_xy[current_station_idx_prof]
             lon_station_prof, lat_station_prof = transformer_to_map.transform(x_station_prof, y_station_prof)
             
-            m_prof = folium.Map(
-                location=[lat_station_prof, lon_station_prof],
-                zoom_start=21,
-                max_zoom=24,
-                control_scale=False,
-                prefer_canvas=True
-            )
+            # Initialize map - use profile bounds if available, otherwise center on station
+            if "profile_bounds" in st.session_state and st.session_state.profile_bounds is not None:
+                # Use center of profile bounds as initial location, then fit to bounds
+                bounds_center_lat = (st.session_state.profile_bounds[0][0] + st.session_state.profile_bounds[1][0]) / 2
+                bounds_center_lon = (st.session_state.profile_bounds[0][1] + st.session_state.profile_bounds[1][1]) / 2
+                m_prof = folium.Map(
+                    location=[bounds_center_lat, bounds_center_lon],
+                    zoom_start=15,  # Lower zoom, will be adjusted by fit_bounds
+                    max_zoom=24,
+                    control_scale=False,
+                    prefer_canvas=True
+                )
+            else:
+                # Fallback to station-centered view
+                m_prof = folium.Map(
+                    location=[lat_station_prof, lon_station_prof],
+                    zoom_start=21,
+                    max_zoom=24,
+                    control_scale=False,
+                    prefer_canvas=True
+                )
             
             folium.TileLayer(
                 tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
@@ -4773,13 +4924,16 @@ with _tab2:
                 tooltip='Centerline (Offset = 0m)'
             ).add_to(m_prof)
             
-            # Zoom to selected station with tighter buffer for more detail
-            # Use smaller buffer for higher zoom level
-            station_buffer = 0.0001  # Reduced buffer for closer zoom
-            m_prof.fit_bounds([
-                [lat_station_prof - station_buffer, lon_station_prof - station_buffer],
-                [lat_station_prof + station_buffer, lon_station_prof + station_buffer]
-            ])
+            # Auto-zoom to full extent of profile line when switching to Profile tab
+            if "profile_bounds" in st.session_state and st.session_state.profile_bounds is not None:
+                m_prof.fit_bounds(st.session_state.profile_bounds)
+            else:
+                # Fallback: zoom to selected station if profile bounds not available
+                station_buffer = 0.0001
+                m_prof.fit_bounds([
+                    [lat_station_prof - station_buffer, lon_station_prof - station_buffer],
+                    [lat_station_prof + station_buffer, lon_station_prof + station_buffer]
+                ])
             
             # Use key with station index and force_plot_update to ensure map refreshes when station changes
             st_folium(m_prof, height=700, width=None, returned_objects=[],
