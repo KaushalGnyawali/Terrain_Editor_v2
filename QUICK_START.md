@@ -1,4 +1,4 @@
-# Terrain Editor Pro v8.0 - Quick Start
+# Terrain Editor Pro v25 - Quick Start
 
 ## 🚀 Application Setup
 
@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 **Option 2: Manual Installation**
 ```bash
-pip install streamlit rasterio numpy pandas folium streamlit-folium shapely plotly pyproj geopandas fiona
+pip install streamlit rasterio numpy pandas folium streamlit-folium shapely plotly pyproj geopandas fiona scipy
 ```
 
 ### Run the Application
@@ -31,35 +31,77 @@ your_project/
 ├── terrain_editor.py
 ├── README.md
 ├── QUICK_START.md
-├── VISUAL_GUIDE.md
+├── VOLUME_CALCULATION_METHODS.md
+├── PROJECT_SUMMARY.md
 └── Data/
-    ├── dem.tif          ← Your DEM file
-    └── Profile.zip       ← Optional profile shapefile
+    ├── dem.tif          ← Your DEM file (optional - can upload)
+    └── Profile.zip      ← Optional profile shapefile (only in folder mode)
 ```
 
 ---
 
 ## 🎯 Quick Start Guide
 
-### 1. Choose Design Mode
+### 1. Choose Data Source & Design Mode
 
+**Data Source (Default: Upload Files)**
+- **Upload Files**: Upload all data through the UI (recommended)
+- **Use Folder**: Load from Data/ folder automatically
+
+**Design Mode**
 - **Profile Line (Berm/Ditch)**: For linear corridor design
 - **Polygon Basin**: For debris storage basin design
 
 ### 2. Load Data
 
-**Option A: Upload Files**
-- Upload DEM (GeoTIFF)
-- Upload Profile (ZIP shapefile or KML) - optional
+**Upload Files Mode (Default):**
+- Upload DEM (GeoTIFF) - Required
+- Upload Profile Line (ZIP, KML, or KMZ) - Optional
+- Upload Contours (ZIP, KML, or KMZ) - Optional for visualization
+- Upload Vector Layers (ZIP, KML, KMZ, or GeoJSON) - Optional for visualization
+  - **Note**: When uploading contours or vector layers, the map automatically zooms to their full extent
+  - Symbology controls (opacity, labels, colors) appear directly in the upload tile
 
-**Option B: Use Data Folder**
+**Use Folder Mode:**
 - Place `dem.tif` in `Data/` folder
 - Place `Profile.zip` (or `profile.zip`) in `Data/` folder - optional
+- Profile auto-loads only in folder mode
 
-### 3. Draw Geometry
+**Important Notes:**
+- Uploading a new profile clears all previous profile data and regenerates stations
+- KMZ files are fully supported (automatically extracted and parsed)
+- Map zooms to uploaded data extent immediately
+
+### 3. Visualize Optional Layers
+
+**Contours (Optional):**
+- Upload contour shapefile (ZIP), KML, or KMZ
+- Map automatically zooms to contour extent
+- Adjust symbology directly in upload tile:
+  - Layer opacity
+  - Show/hide labels (index contours only)
+  - Label field selection
+  - Label size, opacity, and background
+  - Index interval for highlighting major contours
+- Labels appear parallel to contour lines with tight white backgrounds
+
+**Vector Layers (Optional):**
+- Upload vector data (ZIP, KML, KMZ, GeoJSON)
+- Map automatically zooms to layer extent
+- Adjust symbology directly in upload tile:
+  - Layer opacity
+  - Show/hide labels
+  - Label field selection
+  - Label size, opacity, and background
+- Polygon labels centered inside features
+- Multiple layers supported
+
+### 4. Draw Geometry
 
 **Profile Mode:**
 - Draw profile line on map using polyline tool
+- Map zooms to profile line extent automatically
+- Stations (S0, S1, S2...) appear immediately at each vertex
 
 **Basin Mode:**
 - Draw basin polygon on map using polygon tool (map auto-zooms to polygon)
@@ -67,7 +109,7 @@ your_project/
   - Channel line persists after first draw
   - S0 (upstream) and S1 (downstream) markers appear automatically
 
-### 4. Configure Parameters
+### 5. Configure Parameters
 
 **Profile Mode:**
 - Set number of stations
@@ -82,7 +124,7 @@ your_project/
 - Click "Compute Basin Cut" to generate modified DEM and calculate volumes
 - Review both geometric and DEM-difference volumes with uncertainty analysis
 
-### 5. Review & Export
+### 6. Review & Export
 
 - Review cross-sections (Profile Mode) or basin metrics (Basin Mode)
 - Edit elevations if needed (Profile Mode)
@@ -102,6 +144,9 @@ your_project/
 - ✅ Station-by-station elevation editing
 - ✅ Table editing (selected station only)
 - ✅ Longitudinal profile view with automatic updates
+- ✅ KMZ file support for profile uploads
+- ✅ Automatic map zoom to profile extent
+- ✅ Immediate station display after upload
 
 ### Basin Mode
 - ✅ Polygon-based basin design
@@ -117,21 +162,30 @@ your_project/
 - ✅ Basin plan view map (auto-zoomed to polygon extent)
 - ✅ Apply Basin to Terrain workflow
 
+### Visualization & Cartography (v25)
+- ✅ **Contour Labels**: Index contours only, parallel to contour lines, tight white backgrounds
+- ✅ **Polygon Labels**: Centered inside polygons with tight white backgrounds
+- ✅ **Auto-Zoom**: Maps automatically zoom to uploaded data (contours, vectors, profiles)
+- ✅ **In-Tile Symbology**: All layer controls appear directly in upload tiles
+- ✅ **KMZ Support**: Full support for Google Earth KMZ files
+- ✅ **Upload Mode Default**: "Upload Files" is now the default data source
+
 ---
 
 ## 📚 Documentation
 
 - **README.md**: Complete workflow guide and examples
-- **VISUAL_GUIDE.md**: Visual diagrams and parameter guides
 - **QUICK_START.md**: This file - quick setup guide
+- **VOLUME_CALCULATION_METHODS.md**: Detailed calculation methods
+- **PROJECT_SUMMARY.md**: High-level project overview
 
 ---
 
 ## 🆘 Troubleshooting
 
 ### "DEM file not found"
-- Ensure `dem.tif` is in `Data/` folder
-- Or upload DEM file directly
+- Ensure `dem.tif` is in `Data/` folder (if using folder mode)
+- Or upload DEM file directly (recommended)
 
 ### "Draw profile line first" (Profile Mode)
 - Go to Input Data tab
@@ -146,6 +200,16 @@ your_project/
 - Check that you're in Basin Mode
 - S0 and S1 markers should appear automatically when channel is drawn
 - Channel line is displayed in green on both Input Data and Basin Design maps
+
+### Contours or vectors not zooming properly
+- Ensure the file is successfully uploaded (check for success message)
+- Map should automatically zoom to data extent on upload
+- If using folder mode, switch to "Upload Files" mode for auto-zoom
+
+### KML/KMZ upload errors
+- Ensure file is a valid KML or KMZ (Google Earth format)
+- For KMZ files, the app automatically extracts and parses the KML inside
+- Check file size is under 200MB
 
 ---
 
@@ -169,8 +233,14 @@ git checkout main
 
 ---
 
-**VERSION**: 8.0  
-**STATUS**: ✅ Production Ready  
-**LAST UPDATED**: December 2025  
-**NEW FEATURES**: DEM-based volume calculation with uncertainty analysis, improved UI styling, S0/S1 station markers, auto-zoom functionality
-
+**VERSION**: 25
+**STATUS**: ✅ Production Ready
+**LAST UPDATED**: December 2025
+**NEW FEATURES**:
+- KMZ file support with automatic extraction
+- Contour and vector layer symbology controls in upload tiles
+- Index-only contour labels parallel to contour lines
+- Centered polygon labels with tight white backgrounds
+- Automatic map zoom to uploaded data extent
+- Upload Files mode as default
+- Improved label cartography and styling

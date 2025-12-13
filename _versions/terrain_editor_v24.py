@@ -1106,8 +1106,6 @@ if "contours_index_interval" not in st.session_state:
 
 if "vector_layers" not in st.session_state:
     st.session_state.vector_layers = []  # List of dicts: {name, data, opacity, show_labels, label_field, ...}
-if "last_uploaded_vector_name" not in st.session_state:
-    st.session_state.last_uploaded_vector_name = None
 
 # Data Source and Design Mode Selection - Refactored Layout
 # Data Source and Design Mode Selection - Refactored Layout
@@ -1229,10 +1227,6 @@ if st.session_state.data_source == "upload":
                                 else:
                                     st.session_state.uploaded_profile_coords = coords
                                     st.session_state.uploaded_profile_crs = None
-                                # Clear old station data to prevent showing stale stations
-                                st.session_state.center_xy = None
-                                st.session_state.stations = None
-                                st.session_state.samples = None
                                 st.success(f"✅ {uploaded_profile.name}")
                                 st.session_state.profile_just_uploaded = True
                             else:
@@ -1314,30 +1308,7 @@ if st.session_state.data_source == "upload":
                         if gdf is not None and len(gdf) > 0:
                             st.session_state.contours_data = gdf
                             st.session_state.contours_filename = uploaded_contours.name
-                            # Calculate bounds for map zooming
-                            try:
-                                bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
-                                if len(bounds) == 4:
-                                    minx, miny, maxx, maxy = bounds
-                                    # Add buffer
-                                    lon_range = maxx - minx
-                                    lat_range = maxy - miny
-                                    buffer = max(lat_range, lon_range) * 0.1 + 0.0005
-                                    st.session_state.contours_bounds = [
-                                        [miny - buffer, minx - buffer],
-                                        [maxy + buffer, maxx + buffer]
-                                    ]
-                                    st.session_state.contours_just_uploaded = True
-                            except Exception:
-                                pass
                             st.success(f"✅ {uploaded_contours.name} - {len(gdf)} contours loaded")
-            else:
-                # User clicked X to clear the uploader - remove contours from map
-                if st.session_state.contours_data is not None:
-                    st.session_state.contours_data = None
-                    st.session_state.contours_filename = None
-                    st.session_state.contours_bounds = None
-                    st.session_state.contours_just_uploaded = False
 
             # Show symbology controls if contours are loaded
             if st.session_state.contours_data is not None:
@@ -1410,8 +1381,6 @@ if st.session_state.data_source == "upload":
                     if st.button("❌ Remove Contours", key="remove_contours_tile", use_container_width=True):
                         st.session_state.contours_data = None
                         st.session_state.contours_filename = None
-                        st.session_state.contours_bounds = None
-                        st.session_state.contours_just_uploaded = False
                         st.rerun()
     
     # TILE 4: Vector Layers (optional - visualization only - for both modes)
@@ -1451,42 +1420,7 @@ if st.session_state.data_source == "upload":
                                 st.session_state.vector_layers[existing_idx] = layer_dict
                             else:
                                 st.session_state.vector_layers.append(layer_dict)
-
-                            # Track the last uploaded vector name
-                            st.session_state.last_uploaded_vector_name = uploaded_vector.name
-
-                            # Calculate bounds for map zooming
-                            try:
-                                bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
-                                if len(bounds) == 4:
-                                    minx, miny, maxx, maxy = bounds
-                                    # Add buffer
-                                    lon_range = maxx - minx
-                                    lat_range = maxy - miny
-                                    buffer = max(lat_range, lon_range) * 0.1 + 0.0005
-                                    st.session_state.vector_layers_bounds = [
-                                        [miny - buffer, minx - buffer],
-                                        [maxy + buffer, maxx + buffer]
-                                    ]
-                                    st.session_state.vector_just_uploaded = True
-                            except Exception:
-                                pass
-
                             st.success(f"✅ {uploaded_vector.name} - {len(gdf)} features loaded")
-            else:
-                # User clicked X to clear the uploader - remove the last uploaded vector layer from map
-                if st.session_state.last_uploaded_vector_name is not None:
-                    # Find and remove the layer with this name
-                    st.session_state.vector_layers = [
-                        layer for layer in st.session_state.vector_layers
-                        if layer['name'] != st.session_state.last_uploaded_vector_name
-                    ]
-                    st.session_state.last_uploaded_vector_name = None
-
-                    # Clear bounds if no more vector layers
-                    if len(st.session_state.vector_layers) == 0:
-                        st.session_state.vector_layers_bounds = None
-                        st.session_state.vector_just_uploaded = False
 
             # Show symbology controls for loaded vector layers
             if len(st.session_state.vector_layers) > 0:
@@ -1550,10 +1484,6 @@ if st.session_state.data_source == "upload":
 
                         if st.button(f"❌ Remove Layer", key=f"remove_vector_tile_{idx}", use_container_width=True):
                             st.session_state.vector_layers.pop(idx)
-                            # Clear bounds if no more vector layers
-                            if len(st.session_state.vector_layers) == 0:
-                                st.session_state.vector_layers_bounds = None
-                                st.session_state.vector_just_uploaded = False
                             st.rerun()
     
     # TILE 5: Channel Profile (only in Basin mode)
@@ -1601,10 +1531,6 @@ if st.session_state.data_source == "upload":
                                         st.session_state.basin_channel_coords = [[c[0], c[1]] if isinstance(c, (list, tuple)) else c for c in channel_coords]
                                 else:
                                     st.session_state.basin_channel_coords = [[c[0], c[1]] if isinstance(c, (list, tuple)) else c for c in channel_result]
-                                # Clear old station data to prevent showing stale stations
-                                st.session_state.center_xy = None
-                                st.session_state.stations = None
-                                st.session_state.samples = None
                                 st.success(f"✅ {uploaded_channel.name}")
                                 st.session_state.basin_modified_dem = None
                             else:
@@ -3121,10 +3047,8 @@ def find_dem_file():
     
     return None, paths_tried
 
-# Auto-load Profile.zip from Data folder if available and not already loaded (only in folder mode)
-if (st.session_state.data_source == "folder" and
-    not st.session_state.auto_loaded_profile and
-    st.session_state.uploaded_profile_coords is None):
+# Auto-load Profile.zip from Data folder if available and not already loaded
+if not st.session_state.auto_loaded_profile and st.session_state.uploaded_profile_coords is None:
     profile_path = find_profile_file()
     if profile_path is not None:
         result = load_profile_from_path(profile_path)
@@ -4148,27 +4072,53 @@ with tab1:
             except Exception:
                 pass  # Silently fail if channel display has issues
         
-        # Zoom priority: contours/vectors just uploaded > profile line > DEM bounds
-        # Check if contours or vector layers were just uploaded
-        zoom_applied = False
-
-        if st.session_state.get("contours_just_uploaded") and st.session_state.get("contours_bounds"):
-            m.fit_bounds(st.session_state.contours_bounds)
-            st.session_state.contours_just_uploaded = False
-            zoom_applied = True
-        elif st.session_state.get("vector_just_uploaded") and st.session_state.get("vector_layers_bounds"):
-            m.fit_bounds(st.session_state.vector_layers_bounds)
-            st.session_state.vector_just_uploaded = False
-            zoom_applied = True
-
-        # If no contours/vectors just uploaded, use normal zoom logic
-        if not zoom_applied:
-            if st.session_state.design_mode == "profile":
-                # If a user-drawn line exists, auto-zoom to its extent
-                profile_coords = st.session_state.get("profile_line_coords")
-                if profile_coords and len(profile_coords) >= 2:
-                    lons = [coord[0] for coord in profile_coords]
-                    lats = [coord[1] for coord in profile_coords]
+        # Zoom to latest drawn profile line if available, otherwise use DEM bounds
+        if st.session_state.design_mode == "profile":
+            # If a user-drawn line exists, auto-zoom to its extent
+            profile_coords = st.session_state.get("profile_line_coords")
+            if profile_coords and len(profile_coords) >= 2:
+                lons = [coord[0] for coord in profile_coords]
+                lats = [coord[1] for coord in profile_coords]
+                lat_range = max(lats) - min(lats)
+                lon_range = max(lons) - min(lons)
+                buffer = max(lat_range, lon_range) * 0.1 + 0.0005
+                bounds = [
+                    [min(lats) - buffer, min(lons) - buffer],
+                    [max(lats) + buffer, max(lons) + buffer]
+                ]
+                m.fit_bounds(bounds)
+            elif "profile_bounds" in st.session_state and st.session_state.profile_bounds is not None:
+                m.fit_bounds(st.session_state.profile_bounds)
+            else:
+                m.fit_bounds(bounds_map)
+        else:
+            # Basin mode: auto-zoom to polygon if available, otherwise use DEM bounds
+            # If channel was just drawn, auto-zoom to channel extent
+            if st.session_state.get("channel_just_drawn") is True and st.session_state.basin_channel_coords is not None:
+                # Auto-zoom to the channel polyline extent
+                channel_coords = st.session_state.basin_channel_coords
+                if len(channel_coords) >= 2:
+                    lons = [coord[0] for coord in channel_coords]
+                    lats = [coord[1] for coord in channel_coords]
+                    lat_range = max(lats) - min(lats)
+                    lon_range = max(lons) - min(lons)
+                    # Add buffer to ensure channel is fully visible
+                    buffer = max(lat_range, lon_range) * 0.15 + 0.0005
+                    bounds = [
+                        [min(lats) - buffer, min(lons) - buffer],
+                        [max(lats) + buffer, max(lons) + buffer]
+                    ]
+                    m.fit_bounds(bounds)
+                # Clear the flag after using it
+                st.session_state.channel_just_drawn = False
+            elif st.session_state.get("basin_polygon_bounds") is not None:
+                m.fit_bounds(st.session_state.basin_polygon_bounds)
+            elif st.session_state.get("basin_polygon_coords") is not None and len(st.session_state.basin_polygon_coords) >= 3:
+                # Calculate bounds on the fly if not stored
+                polygon_coords = st.session_state.basin_polygon_coords
+                lons = [coord[0] for coord in polygon_coords]
+                lats = [coord[1] for coord in polygon_coords]
+                if lons and lats:
                     lat_range = max(lats) - min(lats)
                     lon_range = max(lons) - min(lons)
                     buffer = max(lat_range, lon_range) * 0.1 + 0.0005
@@ -4177,48 +4127,8 @@ with tab1:
                         [max(lats) + buffer, max(lons) + buffer]
                     ]
                     m.fit_bounds(bounds)
-                elif "profile_bounds" in st.session_state and st.session_state.profile_bounds is not None:
-                    m.fit_bounds(st.session_state.profile_bounds)
-                else:
-                    m.fit_bounds(bounds_map)
             else:
-                # Basin mode: auto-zoom to polygon if available, otherwise use DEM bounds
-                # If channel was just drawn, auto-zoom to channel extent
-                if st.session_state.get("channel_just_drawn") is True and st.session_state.basin_channel_coords is not None:
-                    # Auto-zoom to the channel polyline extent
-                    channel_coords = st.session_state.basin_channel_coords
-                    if len(channel_coords) >= 2:
-                        lons = [coord[0] for coord in channel_coords]
-                        lats = [coord[1] for coord in channel_coords]
-                        lat_range = max(lats) - min(lats)
-                        lon_range = max(lons) - min(lons)
-                        # Add buffer to ensure channel is fully visible
-                        buffer = max(lat_range, lon_range) * 0.15 + 0.0005
-                        bounds = [
-                            [min(lats) - buffer, min(lons) - buffer],
-                            [max(lats) + buffer, max(lons) + buffer]
-                        ]
-                        m.fit_bounds(bounds)
-                    # Clear the flag after using it
-                    st.session_state.channel_just_drawn = False
-                elif st.session_state.get("basin_polygon_bounds") is not None:
-                    m.fit_bounds(st.session_state.basin_polygon_bounds)
-                elif st.session_state.get("basin_polygon_coords") is not None and len(st.session_state.basin_polygon_coords) >= 3:
-                    # Calculate bounds on the fly if not stored
-                    polygon_coords = st.session_state.basin_polygon_coords
-                    lons = [coord[0] for coord in polygon_coords]
-                    lats = [coord[1] for coord in polygon_coords]
-                    if lons and lats:
-                        lat_range = max(lats) - min(lats)
-                        lon_range = max(lons) - min(lons)
-                        buffer = max(lat_range, lon_range) * 0.1 + 0.0005
-                        bounds = [
-                            [min(lats) - buffer, min(lons) - buffer],
-                            [max(lats) + buffer, max(lons) + buffer]
-                        ]
-                        m.fit_bounds(bounds)
-                else:
-                    m.fit_bounds(bounds_map)
+                m.fit_bounds(bounds_map)
         
 
         # Use a stable map key to prevent map reset when channel is drawn

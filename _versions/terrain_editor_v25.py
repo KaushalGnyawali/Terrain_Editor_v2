@@ -1106,8 +1106,6 @@ if "contours_index_interval" not in st.session_state:
 
 if "vector_layers" not in st.session_state:
     st.session_state.vector_layers = []  # List of dicts: {name, data, opacity, show_labels, label_field, ...}
-if "last_uploaded_vector_name" not in st.session_state:
-    st.session_state.last_uploaded_vector_name = None
 
 # Data Source and Design Mode Selection - Refactored Layout
 # Data Source and Design Mode Selection - Refactored Layout
@@ -1331,13 +1329,6 @@ if st.session_state.data_source == "upload":
                             except Exception:
                                 pass
                             st.success(f"✅ {uploaded_contours.name} - {len(gdf)} contours loaded")
-            else:
-                # User clicked X to clear the uploader - remove contours from map
-                if st.session_state.contours_data is not None:
-                    st.session_state.contours_data = None
-                    st.session_state.contours_filename = None
-                    st.session_state.contours_bounds = None
-                    st.session_state.contours_just_uploaded = False
 
             # Show symbology controls if contours are loaded
             if st.session_state.contours_data is not None:
@@ -1410,8 +1401,6 @@ if st.session_state.data_source == "upload":
                     if st.button("❌ Remove Contours", key="remove_contours_tile", use_container_width=True):
                         st.session_state.contours_data = None
                         st.session_state.contours_filename = None
-                        st.session_state.contours_bounds = None
-                        st.session_state.contours_just_uploaded = False
                         st.rerun()
     
     # TILE 4: Vector Layers (optional - visualization only - for both modes)
@@ -1452,9 +1441,6 @@ if st.session_state.data_source == "upload":
                             else:
                                 st.session_state.vector_layers.append(layer_dict)
 
-                            # Track the last uploaded vector name
-                            st.session_state.last_uploaded_vector_name = uploaded_vector.name
-
                             # Calculate bounds for map zooming
                             try:
                                 bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
@@ -1473,20 +1459,6 @@ if st.session_state.data_source == "upload":
                                 pass
 
                             st.success(f"✅ {uploaded_vector.name} - {len(gdf)} features loaded")
-            else:
-                # User clicked X to clear the uploader - remove the last uploaded vector layer from map
-                if st.session_state.last_uploaded_vector_name is not None:
-                    # Find and remove the layer with this name
-                    st.session_state.vector_layers = [
-                        layer for layer in st.session_state.vector_layers
-                        if layer['name'] != st.session_state.last_uploaded_vector_name
-                    ]
-                    st.session_state.last_uploaded_vector_name = None
-
-                    # Clear bounds if no more vector layers
-                    if len(st.session_state.vector_layers) == 0:
-                        st.session_state.vector_layers_bounds = None
-                        st.session_state.vector_just_uploaded = False
 
             # Show symbology controls for loaded vector layers
             if len(st.session_state.vector_layers) > 0:
@@ -1550,10 +1522,6 @@ if st.session_state.data_source == "upload":
 
                         if st.button(f"❌ Remove Layer", key=f"remove_vector_tile_{idx}", use_container_width=True):
                             st.session_state.vector_layers.pop(idx)
-                            # Clear bounds if no more vector layers
-                            if len(st.session_state.vector_layers) == 0:
-                                st.session_state.vector_layers_bounds = None
-                                st.session_state.vector_just_uploaded = False
                             st.rerun()
     
     # TILE 5: Channel Profile (only in Basin mode)
